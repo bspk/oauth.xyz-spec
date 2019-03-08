@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="US-ASCII"?>
+<!DOCTYPE rfc SYSTEM "rfc2629.dtd">
+<?rfc toc="yes"?>
+<?rfc tocompact="yes"?>
+<?rfc tocdepth="3"?>
+<?rfc tocindent="yes"?>
+<?rfc symrefs="yes"?>
+<?rfc sortrefs="yes"?>
+<?rfc comments="yes"?>
+<?rfc inline="yes"?>
+<?rfc compact="yes"?>
+<?rfc subcompact="no"?>
+<rfc category="std" docName="draft-richer-transactional-authz-00"
+     ipr="trust200902">
+  <front>
+    <title abbrev="transactional-authz">Transactional Authorization</title>
+
+    <author fullname="Justin Richer" initials="J." role="editor"
+            surname="Richer">
+      <organization>Bespoke Engineering</organization>
+
+      <address>
+        <email>ietf@justin.richer.org</email>
+      </address>
+    </author>
+
+    <date day="17" month="August" year="2018"/>
+
+    <abstract>
+      <t>This document defines a mechanism for delegating authorization to a
+      piece of software, and conveying that delegation to the software.</t>
+    </abstract>
+
+    <note title="Requirements Language">
+      <t>The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+      "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+      "OPTIONAL" in this document are to be interpreted as described in BCP 14
+      <xref target="RFC2119">RFC 2119</xref> <xref target="RFC8174">RFC
+      8174</xref> when, and only when, they appear in all capitals, as shown
+      here.</t>
+    </note>
+  </front>
+
+  <middle>
+    <section title="Parties">
+      <t>The Authorization Server (AS) manages the transactions. It is defined
+      by its transaction endpoint, a single URL that accepts a POST request
+      with a JSON payload. The AS can also have other endpoints, including
+      interaction endpoints.</t>
+
+      <t>The Authorization Requester (AR) is a party calling the AS. It can be
+      acting as either RC or RS. (TODO: there needs to be a better term for
+      this.)</t>
+
+      <t>The Resource Client (RC) requests tokens from the AS and uses tokens
+      at the RS.</t>
+
+      <t>The Resource Server (RS) accepts tokens from the RC and validates
+      them (potentially at the AS).</t>
+
+      <t>The Resource Owner (RO) authorizes the request from the RC to the
+      RS</t>
+    </section>
+
+    <section title="Data Model">
+      <t/>
+
+      <section title="Transaction">
+        <t>This structure is the root of the protocol. </t>
+
+        <t>A transaction is held at the AS and changes over time.</t>
+
+        <t>A transaction contains a reference to a Resource, a Client, a User,
+        and potentially other items. </t>
+
+        <t>The transaction can be referenced by a Transaction Handle.</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+transaction: {
+handle: "abcd-1234"
+}
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+      </section>
+
+      <section title="Client">
+        <t>The client has a set of display items such as a name and TOS page.
+        </t>
+
+        <t>This can also be associated at the AS with a set of allowable
+        Resource items, Users, Interaction methods, and Keys.</t>
+
+        <t><figure>
+            <artwork><![CDATA[client: {
+
+  name: "Display Name",
+  homepage: "https://example.com/client"
+
+}]]></artwork>
+          </figure> </t>
+
+        <t>The client can be referenced by a Client Handle. This handle can be
+        issued by the AS during a previous transaction, or during an out of
+        band registration process.</t>
+
+        <figure>
+          <artwork><![CDATA[client: {
+
+  handle: "abcd-12356"
+
+}]]></artwork>
+        </figure>
+      </section>
+
+      <section title="Resource">
+        <t>Description of the RS being called. This includes what's being
+        asked for, what actions are to be taken there, and where those actions
+        are being taken. </t>
+
+        <figure>
+          <artwork><![CDATA[resource: {
+
+  actions: ["read", "write"],
+  locations: ["https://exapmle.com/resource"]
+  data: ["foo", "bar"]
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The Resource can be referenced by a Resource Handle. The resource
+        handle can be pre-configured at the AS and published, in which case it
+        is akin to an OAuth2 Scope. The resource handle can be generated on a
+        per-transaction bases and returned to the AR.</t>
+
+        <figure>
+          <artwork><![CDATA[resource: {
+
+  handle: "foo"
+
+
+}]]></artwork>
+        </figure>
+      </section>
+
+      <section title="User">
+        <t>This structure details information about the user.</t>
+
+        <t>This can be passed as an assertion:</t>
+
+        <figure>
+          <artwork><![CDATA[user: {
+
+  assertion: "eyj0...."
+  format: openid-connect-id-token
+
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>This can also be passed as a User Handle. This handle is issued by
+        the AS during a previous transaction </t>
+      </section>
+
+      <section title="Interact">
+        <t>This structure details how the client can interact with the end
+        user, and how information can be returned to the RC after the
+        interaction has taken place. </t>
+
+        <figure>
+          <artwork><![CDATA[{
+  type: redirect
+  callback: https://client.foo/
+  state: foo
+}]]></artwork>
+        </figure>
+
+        <figure>
+          <artwork><![CDATA[{
+  type: device
+}]]></artwork>
+        </figure>
+
+        <figure>
+          <artwork><![CDATA[{
+  type: push
+  state: foo
+}]]></artwork>
+        </figure>
+      </section>
+
+      <section title="Keys">
+        <t>(TODO: is this part of the Client structure or its own box?)</t>
+
+        <t>This structure describes how the requester can prove posession of a
+        number of different keys. These keys can be bound to any of the
+        handles returned by the authorization server.</t>
+
+        <t>If the RC can use MTLS, it presents the thumbprint of its
+        certificate. If this key is present, the AS MUST validate that the TLS
+        client certificate matches the thumbprint given.</t>
+
+        <t>If the RC can use asymmetric JOSE, it signs the body of the request
+        using detached JWS and includes its public key in the request as a
+        JWKS. (TODO: does detached JWS make sense here? Where do we put the
+        signature?)</t>
+
+        <t>The keys may be presented as a Key Handle. This handle is issued by
+        the AS during a previous transaction or during client
+        registration.</t>
+      </section>
+    </section>
+
+    <section title="Getting a Token">
+      <t/>
+
+      <section title="Initial Token Request">
+        <t>The RC sends a message to the AS with a transaction reference
+        handle or a transaction reference.</t>
+
+        <t><figure>
+            <artwork><![CDATA[{
+
+  "client": {
+
+  },
+  "resource": {
+
+  }
+  "user": {
+
+  }
+  "interact": {
+
+  }
+  "keys": {
+
+  }
+
+}]]></artwork>
+          </figure></t>
+
+        <t>If the AS can process the request immediately, it does so and
+        returns a token.</t>
+      </section>
+
+      <section title="Interactive Authorization">
+        <t>If the AS decides that the RO needs to interact in order to process
+        the request, it returns the information needed to send the user to the
+        interaction endpoint.</t>
+      </section>
+
+      <section title="Token Request">
+        <t>The RC can keep polling the AS during the process. Every time a
+        request comes in, the transaction handle is rotated.</t>
+      </section>
+
+      <section title="Token Response">
+        <t>When a transaction has been sufficiently approved, the AS generates
+        a token and returns it to the client.</t>
+      </section>
+
+      <section title="RS sets up transaction">
+        <t>If the clients intially makes a call to the RS, the RS can call the
+        AS to generate a resource identifier that the client can use in its
+        transaction. </t>
+      </section>
+    </section>
+
+    <section title="Interaction">
+      <t>The AS might require the user to interact with it in order to prove
+      the user's presence, obtain consent, provide notification, or other
+      essential items. </t>
+
+      <section title="Redirect">
+        <t>If the client indicates that it can interact with the user through
+        a redirection mechanism, the AS creates a unique interaction URL and
+        returns it to the client. The client then sends the user to that URL
+        using either a redirect (if a web based client) or invoking a browser
+        (if a non-web client).</t>
+
+        <t>When the user is done interacting, the server takes the callback
+        URI presented with the transaction, appends a hash of the client's
+        state value, and appends an interaction handle.</t>
+      </section>
+
+      <section title="Secondary Device">
+        <t>If the client indicates that it can interact with the user through
+        a secondary device, the AS sends a stable interaction URL to the
+        client along with a short user code.</t>
+
+        <t>The user enters the user code into the AS.</t>
+
+        <t>When the user is done interacting, the AS indicates to the user
+        that they should return to their device.</t>
+      </section>
+
+      <section title="Push">
+        <t>If the client indicates that it can have messages pushed to the
+        user's device, the AS sends back an indication that it will do so.
+        (TODO: does this mode need some form of key as well, or does the
+        client poll?)</t>
+      </section>
+    </section>
+
+    <section title="Reference Handles">
+      <t>Reference handles can replace the objects listed above.</t>
+
+      <t>A bearer handle describes a token that is used completely as-is on
+      its own. </t>
+
+      <figure>
+        <artwork><![CDATA[handle: {
+  type: bearer
+  value: "abcdef"
+  
+}]]></artwork>
+      </figure>
+
+      <t/>
+
+      <t>A hashed handle requires the presenter to hash the handle value and
+      present the hashed value instead. </t>
+
+      <t><figure>
+          <artwork><![CDATA[handle {
+  type: SHA3-512
+  value: "abcdef"
+}]]></artwork>
+        </figure></t>
+
+      <t/>
+
+      <t>The AS creates a transaction handle and returns it to the RC as part
+      of the transaction response, regardless of the type of response. This
+      handle represents the transaction as a whole. A transaction request
+      without a handle is seen as a new transaction, unrelated to the previous
+      one.</t>
+
+      <t>Reference handles can be generated by the authorization server and
+      returned to the client for any subsection of the transaction object as
+      well. The client can present any of these handles as a replacement for
+      its value.</t>
+
+      <t>Once a handle is used, it MUST be discarded and a replacement issued
+      by the appropriate party.</t>
+
+      <section title="Presenting a handle">
+        <t>Bearer assertions are presented as a direct value.</t>
+
+        <t>Hash assertions are presented the Base64URL encoding (with no
+        padding) of the hashed value.</t>
+      </section>
+    </section>
+
+    <section title="Using a Token">
+      <t/>
+    </section>
+
+    <section anchor="Acknowledgements" title="Acknowledgements">
+      <t/>
+    </section>
+
+    <section anchor="IANA" title="IANA Considerations">
+      <t>This specification creates one registry and registers several values
+      into existing registries.</t>
+    </section>
+
+    <section anchor="Security" title="Security Considerations">
+      <t/>
+    </section>
+
+    <section anchor="Privacy" title="Privacy Considerations">
+      <t/>
+    </section>
+  </middle>
+
+  <back>
+    <references title="Normative References">
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'?>
+
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7519.xml'?>
+
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7662.xml'?>
+
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6749.xml'?>
+
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml'?>
+
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml'?>
+
+      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml'?>
+
+      <reference anchor="OpenID">
+        <front>
+          <title>OpenID Connect Core 1.0</title>
+
+          <author fullname="Nat Sakimura" initials="N." surname="Sakimura">
+            <organization abbrev="NRI">Nomura Research Institute,
+            Ltd.</organization>
+          </author>
+
+          <author fullname="John Bradley" initials="J." surname="Bradley">
+            <organization abbrev="Ping Identity">Ping Identity</organization>
+          </author>
+
+          <author fullname="Michael B. Jones" initials="M.B." surname="Jones">
+            <organization abbrev="Microsoft">Microsoft</organization>
+          </author>
+
+          <date day="8" month="November" year="2014"/>
+        </front>
+
+        <format target="http://openid.net/specs/openid-connect-core-1_0.html"
+                type="HTML"/>
+      </reference>
+    </references>
+
+    <section title="Document History">
+      <t>- 00</t>
+
+      <t><list style="symbols">
+          <t>Initial submission.</t>
+        </list></t>
+    </section>
+  </back>
+</rfc>
