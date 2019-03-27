@@ -62,65 +62,73 @@
       RS</t>
     </section>
 
-    <section title="Data Model">
-      <t/>
+    <section title="Transaction request">
+      <t>To start a transaction, the RC makes a transaction request to the
+      transaction endpoint of the AS. The RC creats a JSON document with up to
+      five sections.</t>
 
-      <section title="Transaction">
-        <t>This structure is the root of the protocol. </t>
+      <t><list style="hanging">
+          <t hangText="client">Information about the RC making the request,
+          including display name, homepage, logo, and other user-facing
+          information</t>
 
-        <t>A transaction is held at the AS and changes over time.</t>
+          <t hangText="resource">Information about the RS the resulting token
+          will be applied to, including locations, extents of access, types of
+          data being accessed, and other API information.</t>
 
-        <t>A transaction contains a reference to a Resource, a Client, a User,
-        and potentially other items. </t>
+          <t hangText="user">Information about the RO as known to or provided
+          to the RC, in the form of assertions or references to external
+          data.</t>
 
-        <t>The transaction can be referenced by a Transaction Handle.</t>
+          <t hangText="interact">Information about how the RC is able to
+          interact with the RO, including callback URI's.</t>
+
+          <t hangText="keys">Information about the keys known to the RC and
+          able to be presented in future parts of the transaction.</t>
+        </list></t>
+
+      <t>All of these sections are OPTIONAL, and an AS </t>
+
+      <section title="Client">
+        <t>This section provides descriptive details of the client software
+        making the call. </t>
+
+        <t><list style="hanging">
+            <t hangText="name">Display name of the client software</t>
+
+            <t hangText="uri">User-facing web page of the client software</t>
+
+            <t hangText="logo_uri">Display image to represent the client
+            software</t>
+          </list></t>
 
         <figure>
-          <artwork><![CDATA[{
+          <artwork><![CDATA[client: {
 
-transaction: {
-handle: "abcd-1234"
-}
+  name: "Display Name",
+  uri: "https://example.com/client"
 
 }]]></artwork>
         </figure>
 
         <t/>
-      </section>
 
-      <section title="Client">
-        <t>The client has a set of display items such as a name and TOS page.
-        </t>
-
-        <t>This can also be associated at the AS with a set of allowable
-        Resource items, Users, Interaction methods, and Keys.</t>
-
-        <t><figure>
-            <artwork><![CDATA[client: {
-
-  name: "Display Name",
-  homepage: "https://example.com/client"
-
-}]]></artwork>
-          </figure> </t>
-
-        <t>The client can be referenced by a Client Handle. This handle can be
-        issued by the AS during a previous transaction, or during an out of
-        band registration process.</t>
-
-        <figure>
-          <artwork><![CDATA[client: {
-
-  handle: "abcd-12356"
-
-}]]></artwork>
-        </figure>
+        <t>This can also be presented as a client handle reference.</t>
       </section>
 
       <section title="Resource">
-        <t>Description of the RS being called. This includes what's being
-        asked for, what actions are to be taken there, and where those actions
-        are being taken. </t>
+        <t>This section identifies the RS and describes what the RC wants to
+        do with the API hosted at the RS.</t>
+
+        <t><list style="hanging">
+            <t hangText="actions">The types of actions the RC will take at the
+            RS</t>
+
+            <t hangText="locations">URIs the RC will call at the RS</t>
+
+            <t hangText="data">types of data available to the RC at the RS's
+            API</t>
+          </list></t>
 
         <figure>
           <artwork><![CDATA[resource: {
@@ -134,235 +142,631 @@ handle: "abcd-1234"
 
         <t/>
 
-        <t>The Resource can be referenced by a Resource Handle. The resource
-        handle can be pre-configured at the AS and published, in which case it
-        is akin to an OAuth2 Scope. The resource handle can be generated on a
-        per-transaction bases and returned to the AR.</t>
-
-        <figure>
-          <artwork><![CDATA[resource: {
-
-  handle: "foo"
-
-
-}]]></artwork>
-        </figure>
+        <t>This can also be presented as a set of resource handle
+        references.</t>
       </section>
 
       <section title="User">
-        <t>This structure details information about the user.</t>
+        <t>This section provides a verifiable assertion about the RO
+        interacting with the client on behalf of the request.</t>
 
-        <t>This can be passed as an assertion:</t>
+        <t><list style="hanging">
+            <t hangText="assertion">The value of the assertion as a
+            string.</t>
+
+            <t hangText="type">The type of the assertion. Possible values
+            include "oidc_id_token"...</t>
+          </list></t>
 
         <figure>
           <artwork><![CDATA[user: {
 
-  assertion: "eyj0...."
-  format: openid-connect-id-token
-
+  assertion: "eyj0....",
+  type: "oidc_id_token"
 
 }]]></artwork>
         </figure>
 
         <t/>
 
-        <t>This can also be passed as a User Handle. This handle is issued by
-        the AS during a previous transaction </t>
+        <t>This can also be presented as a user handle reference.</t>
       </section>
 
       <section title="Interact">
-        <t>This structure details how the client can interact with the end
-        user, and how information can be returned to the RC after the
-        interaction has taken place. </t>
+        <t>This section provides details of how the RC can interact with the
+        RO. All interact requests MUST have the "type" field.</t>
 
-        <figure>
-          <artwork><![CDATA[{
+        <t><list style="hanging">
+            <t hangText="type">Type of interaction. Can be "redirect" or
+            "device".</t>
+          </list></t>
+
+        <t>Each interaction type has its own parameters and behaviors,
+        detailed below.</t>
+
+        <t>This can also be presented as interaction handle reference.</t>
+
+        <section title="Redirect">
+          <t>A redirect type interaction has the RC send the RO to a URL at
+          the AS and interact with the AS directly, using any number of
+          interactions. Following the interaction, the RO is sent back to the
+          RC using the "callback" URI.</t>
+
+          <t><list style="hanging">
+              <t hangText="type">must be "redirect"</t>
+
+              <t hangText="callback">URI to send the user to after
+              interaction, SHOULD (MUST?) be unique per transaction and hosted
+              or accessible by the RC. This URL MUST NOT contain any fragment
+              component. This URL MUST be protected by HTTPS, hosted on a
+              server local to the user's browser ("localhost"), or use an
+              application-specific URL scheme. </t>
+
+              <t hangText="state">Unique value to be returned to the
+              application as a query parameter on the callback URL, must be
+              sufficiently random to be unguessable by an attacker. </t>
+            </list></t>
+
+          <figure>
+            <artwork><![CDATA[interact: {
   type: redirect
   callback: https://client.foo/
   state: foo
 }]]></artwork>
-        </figure>
+          </figure>
 
-        <figure>
-          <artwork><![CDATA[{
+          <t/>
+        </section>
+
+        <section title="Device">
+          <t>The device type interaction has the RC send the user to a URL at
+          the AS and interact with the AS directly by entering a short code
+          provided by the AS. Following the interaction, the RO is prompted by
+          the AS to check their RC device.</t>
+
+          <t><list style="hanging">
+              <t hangText="type">must be "device"</t>
+            </list></t>
+
+          <figure>
+            <artwork><![CDATA[interact: {
   type: device
 }]]></artwork>
-        </figure>
+          </figure>
 
-        <figure>
-          <artwork><![CDATA[{
-  type: push
-  state: foo
-}]]></artwork>
-        </figure>
+          <t/>
+        </section>
       </section>
 
       <section title="Keys">
-        <t>(TODO: is this part of the Client structure or its own box?)</t>
+        <t>This section lists the keys that the client can present proof of
+        ownership. Each key type has its own proofing mechanism, listed in
+        individual sections below.</t>
 
-        <t>This structure describes how the requester can prove posession of a
-        number of different keys. These keys can be bound to any of the
-        handles returned by the authorization server.</t>
+        <t><list style="hanging">
+            <t hangText="type">Validation method for the key, must be one of
+            "djws" or "mtls".</t>
+          </list></t>
 
-        <t>If the RC can use MTLS, it presents the thumbprint of its
-        certificate. If this key is present, the AS MUST validate that the TLS
-        client certificate matches the thumbprint given.</t>
+        <t>All presented keys MUST be validated by the AS as per the Key
+        Validation section.</t>
 
-        <t>If the RC can use asymmetric JOSE, it signs the body of the request
-        using detached JWS and includes its public key in the request as a
-        JWKS. (TODO: does detached JWS make sense here? Where do we put the
-        signature?)</t>
+        <t>This can also be presented as a key handle reference.</t>
 
-        <t>The keys may be presented as a Key Handle. This handle is issued by
-        the AS during a previous transaction or during client
-        registration.</t>
+        <section title="Detatched JWS method">
+          <t><list style="hanging">
+              <t hangText="type">MUST be "djws"</t>
+
+              <t hangText="jwks">Value of the public key as a JWK Set JSON
+              object. MUST contain an "alg" field which is used for
+              verification.</t>
+            </list></t>
+
+          <figure>
+            <artwork><![CDATA[key: {
+
+  type: jwsd,
+  jwks: { keys: [ alg: RS256, kty: ... ] }
+
+}]]></artwork>
+          </figure>
+
+          <t/>
+        </section>
+
+        <section title="MTLS method">
+          <t><list style="hanging">
+              <t hangText="type">MUST be "mtls"</t>
+
+              <t hangText="cert">String serialized value of the certificate
+              thumbprint as per OAuth-MTLS.</t>
+            </list></t>
+
+          <figure>
+            <artwork><![CDATA[key: {
+
+  type: mtls,
+  cert: "MII...."
+
+}]]></artwork>
+          </figure>
+
+          <t/>
+        </section>
       </section>
     </section>
 
-    <section title="Getting a Token">
+    <section title="Interaction response">
+      <t>When evaluating a transaction request, the AS can determine that it
+      needs to have the RO present to interact with the AS before issuing a
+      token. This interaction can include the RO logging in to the AS,
+      authorizing the transaction, providing proof claims, determining if the
+      transaction decision should be remembered for the future, and other
+      items.</t>
+
+      <t>The AS resonds to the RC based on the type of interaction supported
+      by the RC in the transaction request. </t>
+
       <t/>
 
-      <section title="Initial Token Request">
-        <t>The RC sends a message to the AS with a transaction reference
-        handle or a transaction reference.</t>
+      <section title="Redirect interaction">
+        <t>If the RC supports a "redirect" style interaction, the AS creates a
+        unique interaction URL and returns it to the RC. This URL MUST be
+        associated with a single pending transaction. </t>
 
-        <t><figure>
-            <artwork><![CDATA[{
+        <t><list style="hanging">
+            <t hangText="interaction_url">The interaction URL that the RC will
+            direct the RO to. This URL MUST be unique to this transaction
+            request. The URL SHOULD contain a random portion of sufficient
+            entropy so as not to be guessable by the user. The URL MUST NOT
+            contain the transaction handle or any client identifying
+            information. This URL MUST be protected by HTTPS. This URL MUST
+            NOT contain any fragment component.</t>
 
-  "client": {
+            <t hangText="handle">The transaction handle to use in the continue
+            request once the RO has been returned to the RC via the callback
+            URL. See the section on transaction handles.</t>
+          </list></t>
 
-  },
-  "resource": {
+        <figure>
+          <artwork><![CDATA[{
 
-  }
-  "user": {
-
-  }
-  "interact": {
-
-  }
-  "keys": {
-
+  interaction_url: "https://server.example.com/interact/123asdfklj",
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
   }
 
 }]]></artwork>
-          </figure></t>
+        </figure>
 
-        <t>If the AS can process the request immediately, it does so and
-        returns a token.</t>
+        <t/>
+
+        <t>When the RC receives this response, it sends the RO to the
+        interaction URL. </t>
+
+        <t>Once the RO has completed the interaction with the AS, the AS
+        returns the user to the RC by redirecting the RO's browser to the RC's
+        callback URL presented at the start of the transaction, with the state
+        parameter appended to the callback URL as a query parameter in
+        addition to an interaction handle to be returned to the AS in a
+        transaction continuation request. </t>
+
+        <t><list style="hanging">
+            <t hangText="state">The (hashed?) value of the state parameter
+            sent by the client in the initial interaction request.</t>
+
+            <t hangText="interact_handle">TA shared secret associated with
+            this interaction. This value MUST be sufficiently random so as not
+            to be guessable by an attacker. This value MUST be associated by
+            the AS with the underlying transaction that is associated to with
+            this interaction.</t>
+          </list></t>
+
+        <t>Upon processing this request to the callback URL, the client MUST
+        match the state value to the value it sent in the original transaction
+        request. The RC then sends a transaction continuation request with the
+        transaction handle returned in the interaction response and the (hash
+        of?) the interaction handle returned as a query parameter to the
+        callback URL.</t>
+
+        <t>[Open Question: error conditions. If the user denies access or
+        there's some other authorization error, do we return to the callback?
+        What's the attack surface here? We could always return an error page
+        to the browser and cancel the underlying transaction, effectively
+        killing it at the AS.]</t>
+
+        <t>If the AS cannot identify the source transaction from the source
+        URL, it returns an HTTP 404 error page to the browser. </t>
       </section>
 
-      <section title="Interactive Authorization">
-        <t>If the AS decides that the RO needs to interact in order to process
-        the request, it returns the information needed to send the user to the
-        interaction endpoint.</t>
-      </section>
+      <section title="Secondary device interaction">
+        <t>If the RC supports a "device" style interaction, the AS creates a
+        unique interaction code and returns it to the RC along with a URL to
+        give the user for interaction.</t>
 
-      <section title="Token Request">
-        <t>The RC can keep polling the AS during the process. Every time a
-        request comes in, the transaction handle is rotated.</t>
-      </section>
+        <t><list style="hanging">
+            <t hangText="user_code">A short code that the user can type into
+            an authorization server. This string MUST be case-insensitive,
+            MUST consist of only easily typeable characters (such as letters
+            or numbers). The time in which this code will be accepted MUST be
+            short lived. </t>
 
-      <section title="Token Response">
-        <t>When a transaction has been sufficiently approved, the AS generates
-        a token and returns it to the client.</t>
-      </section>
+            <t hangText="interaction_url">The interaction URL that the RC will
+            direct the RO to. This URL SHOULD be stable over time.</t>
 
-      <section title="RS sets up transaction">
-        <t>If the clients intially makes a call to the RS, the RS can call the
-        AS to generate a resource identifier that the client can use in its
-        transaction. </t>
+            <t hangText="wait">The amount of time to wait before polling
+            again, in integer seconds.</t>
+
+            <t hangText="handle">The transaction handle to use in the continue
+            request. This MUST be a newly-created handle and MUST replace any
+            existing handle for this transaction. See the section on
+            transaction handles.</t>
+          </list></t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  user_code: "ABCD1234"
+  interaction_url: "https://server.example.com/device",
+  wait: 30,
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>When the RC receives this response, it MUST communicate the user
+        code to the RO. If possible the RC SHOULD communicate the interaction
+        URL to the user as well.</t>
       </section>
     </section>
 
-    <section title="Interaction">
-      <t>The AS might require the user to interact with it in order to prove
-      the user's presence, obtain consent, provide notification, or other
-      essential items. </t>
+    <section title="Wait response">
+      <t>If the AS needs to do something that the RC has no part in before it
+      can give a definitive response, the AS replies to the transaction
+      request with a wait response. This tells the RC that it can poll the
+      transaction after a set amount of time. </t>
 
-      <section title="Redirect">
-        <t>If the client indicates that it can interact with the user through
-        a redirection mechanism, the AS creates a unique interaction URL and
-        returns it to the client. The client then sends the user to that URL
-        using either a redirect (if a web based client) or invoking a browser
-        (if a non-web client).</t>
+      <t><list style="hanging">
+          <t hangText="wait">The amount of time to wait before polling again,
+          in integer seconds. </t>
 
-        <t>When the user is done interacting, the server takes the callback
-        URI presented with the transaction, appends a hash of the client's
-        state value, and appends an interaction handle.</t>
-      </section>
-
-      <section title="Secondary Device">
-        <t>If the client indicates that it can interact with the user through
-        a secondary device, the AS sends a stable interaction URL to the
-        client along with a short user code.</t>
-
-        <t>The user enters the user code into the AS.</t>
-
-        <t>When the user is done interacting, the AS indicates to the user
-        that they should return to their device.</t>
-      </section>
-
-      <section title="Push">
-        <t>If the client indicates that it can have messages pushed to the
-        user's device, the AS sends back an indication that it will do so.
-        (TODO: does this mode need some form of key as well, or does the
-        client poll?)</t>
-      </section>
-    </section>
-
-    <section title="Reference Handles">
-      <t>Reference handles can replace the objects listed above.</t>
-
-      <t>A bearer handle describes a token that is used completely as-is on
-      its own. </t>
+          <t hangText="handle">The transaction handle to use in the continue
+          request. This MUST be a newly-created handle and MUST replace any
+          existing handle for this transaction. See the section on transaction
+          handles.</t>
+        </list></t>
 
       <figure>
-        <artwork><![CDATA[handle: {
-  type: bearer
-  value: "abcdef"
-  
+        <artwork><![CDATA[{
+
+  wait: 30,
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  }
+
+}]]></artwork>
+      </figure>
+    </section>
+
+    <section title="Error response">
+      <t>If the AS determines that the token cannot be issued for any reason,
+      it responds to the client with an error message. This message does not
+      include a transaction handle, and the RC can no longer poll for this
+      transaction. The RC MAY create a new transaction.</t>
+
+      <t><list style="hanging">
+          <t hangText="error">The error code.</t>
+        </list></t>
+
+      <figure>
+        <artwork><![CDATA[{
+
+  error: user_denied
+
 }]]></artwork>
       </figure>
 
       <t/>
+    </section>
 
-      <t>A hashed handle requires the presenter to hash the handle value and
-      present the hashed value instead. </t>
+    <section title="Transaction continue request">
+      <t>Once a transaction has begun, the AS associates that transaction with
+      a transaction handle which is returned to the RC in one of the
+      transaction responses. This handle MUST be unique, MUST be associated
+      with a single transaction, and MUST be one time use.</t>
 
-      <t><figure>
-          <artwork><![CDATA[handle {
-  type: SHA3-512
-  value: "abcdef"
+      <t>The RC continues the transaction by making a request with the
+      transaction handle in the body of the request. The RC MAY add additional
+      fields depending on the type of interaction and authorization process in
+      play.</t>
+
+      <t><list style="hanging">
+          <t hangText="transaction">The (hash of?) transaction handle to use
+          in the continue request.</t>
+
+          <t hangText="interaction_handle">The (hash of?) interaction handle
+          returned to the RC's callback URL from the interaction endpoint.</t>
+        </list></t>
+
+      <figure>
+        <artwork><![CDATA[{
+
+  transaction: "tghji76ytghj9876tghjko987yh"
+
 }]]></artwork>
-        </figure></t>
+      </figure>
 
       <t/>
+    </section>
 
-      <t>The AS creates a transaction handle and returns it to the RC as part
-      of the transaction response, regardless of the type of response. This
-      handle represents the transaction as a whole. A transaction request
-      without a handle is seen as a new transaction, unrelated to the previous
-      one.</t>
+    <section title="Token response">
+      <t/>
 
-      <t>Reference handles can be generated by the authorization server and
-      returned to the client for any subsection of the transaction object as
-      well. The client can present any of these handles as a replacement for
-      its value.</t>
+      <t><list style="hanging">
+          <t hangText="access_token">The access token that the RC uses to call
+          the RS.</t>
 
-      <t>Once a handle is used, it MUST be discarded and a replacement issued
-      by the appropriate party.</t>
+          <t hangText="keys">List of keys that the access token is bound to
+          using the methods in key validation. If not specified, the access
+          token is a bearer token.</t>
 
-      <section title="Presenting a handle">
-        <t>Bearer assertions are presented as a direct value.</t>
+          <t hangText="handle">The transaction handle to use in the continue
+          request to get a new access token once the one issued is no longer
+          usable. See the section on transaction handles.</t>
+        </list></t>
 
-        <t>Hash assertions are presented the Base64URL encoding (with no
-        padding) of the hashed value.</t>
+      <figure>
+        <artwork><![CDATA[key: {
+
+  access_token: "08ur4kahfga09u23rnkjasdf",
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  }
+
+}]]></artwork>
+      </figure>
+
+      <t/>
+    </section>
+
+    <section title="Handle references">
+      <t>Many parts of this protocol are referenced through the use of handles
+      as stand-ins for actual values, including transactions themselves as
+      well as portions of transactions.</t>
+
+      <t><list style="hanging">
+          <t hangText="value">The value of the handle as a string.</t>
+
+          <t hangText="method">The verification method, MUST be one of
+          "bearer" or "sha3". </t>
+        </list></t>
+
+      <section title="Validating handles">
+        <t>Bearer handles are validated by doing an exact byte comparison of
+        the string representation of the handle value.</t>
+
+        <t>SHA3 handles are validated by taking the SHA3 hash of the handle
+        value and encoding it in Base64URL with no padding.</t>
+      </section>
+
+      <section title="Transaction handles">
+        <t>Transaction handles are issued by the AS to the RC to allow the RC
+        to continue a transaction after every step. A transaction handle MUST
+        be discarded after it is used. If the AS determines that the RC can
+        continue the transaction, a new transaction handle will be issued in
+        its place.</t>
+      </section>
+
+      <section title="Client handles">
+        <t>Client handles stand in for the client section of the initial
+        transaction request. The AS MAY issue a client handle to a client as
+        part of a static registration process, analogous to a client ID,
+        allowing the client to be associated with an AS-side configuration
+        that does not change at runtime. Such static processes SHOULD be bound
+        to a set of keys known only to the client software.</t>
+
+        <t>Client handles MAY be issued by the RS in response to a transaction
+        request. The AS MAY bind this handle to the interact, resource, and
+        key handles issued in the same response. When the RC receives this
+        handle, it MAY present the handle in future transaction requests
+        instead of sending its information again. </t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  },
+  client_handle: {
+    value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
+    method: "bearer"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The RC sends its handle in lieu of the client block of the
+        transaction request:</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  client: {
+    handle: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t> </t>
+      </section>
+
+      <section title="Resource handles">
+        <t>Resource handles stand in for the detailed resource request in the
+        transaction request. Resource handles MAY be created by the
+        authorization server as static stand-ins for specific resource
+        requests, analogous to OAuth2 scopes.</t>
+
+        <t>Resource handles MAY be issued by the RS in response to a
+        transaction request. When the RC receives this handle, it MAY present
+        the handle in future transaction requests instead of sending its
+        information again.</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  },
+  resource_handle: {
+    value: "foo",
+    method: "bearer"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The RC sends its handle in lieu of the resource block of the
+        transaction request:</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  resource: {
+    handle: "foo"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+      </section>
+
+      <section title="User handles">
+        <t>User handles MAY be issued by the AS in response to validating a
+        specific RO during a transaction. This handle can be used in future
+        transactions to represent the current user, analogous to the
+        persistent claims token. </t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  },
+  user_handle: {
+    value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
+    method: "bearer"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The RC sends its handle in lieu of the user block of the
+        transaction request:</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  user: {
+    handle: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+      </section>
+
+      <section title="Key handles">
+        <t>Key handles stand in for the keys section of the initial
+        transaction request. The AS MAY issue a key handle to a client as part
+        of a static registration process, allowing the client to be associated
+        with an AS-side configuration that does not change at runtime. </t>
+
+        <t>Key handles MAY be issued by the RS in response to a transaction
+        request. The AS SHOULD bind this handle to the client, resource, and
+        user handles issued in the same response. When the RC receives this
+        handle, it MAY present the handle in future transaction requests
+        instead of sending its information again.</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  handle: {
+    value: "tghji76ytghj9876tghjko987yh",
+    method: "bearer"
+  },
+  key_handle: {
+    value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
+    method: "bearer"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The RC sends its handle in lieu of the client block of the
+        transaction request:</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  key: {
+    handle: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  }
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>When the AS receives a key handle, it MUST validate that the keys
+        referenced by the handle are bound to the current transaction request.
+        </t>
+      </section>
+    </section>
+
+    <section title="Binding Keys">
+      <t>Any keys presented by the RC to the AS or RS MUST be validated as
+      part of the transaction in which they are presented.</t>
+
+      <section title="Validating detached JWT">
+        <t>The RC signs the request using [some HTTP signing mechanism] and
+        its private key, and attaches the signature to the HTTP request using
+        [a header method?].</t>
+      </section>
+
+      <section title="Validating MTLS">
+        <t>The RC presents its client certificate during TLS negotiation with
+        the server. The AS or RS takes the hash of the client certificate
+        presented during mutual TLS negotiation and compares that thumbprint
+        to the thumbprint presented by the RC application. </t>
       </section>
     </section>
 
     <section title="Using a Token">
-      <t/>
+      <t>Bearer access tokesn issued through this method can be used with the
+      authorization header method found in RFC6750. Other access tokens are
+      validated by the RS in accordance with the methods in the Binding Keys
+      section.</t>
     </section>
 
     <section anchor="Acknowledgements" title="Acknowledgements">
