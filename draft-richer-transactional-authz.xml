@@ -24,7 +24,7 @@
       </address>
     </author>
 
-    <date day="30" month="April" year="2019"/>
+    <date day="15" month="May" year="2019"/>
 
     <abstract>
       <t>This document defines a mechanism for delegating authorization to a
@@ -92,7 +92,7 @@
           to be optional.)</t>
         </list></t>
 
-      <t>An AS MAY </t>
+      <t>An AS MAY</t>
 
       <section title="Client">
         <t>This section provides descriptive details of the client software
@@ -150,8 +150,8 @@
 
         <t/>
 
-        <t>This can also be presented as a set of resource handle
-        references.</t>
+        <t>This can also be presented as a set of resource handle references,
+        or a combination of handles and resource structures.</t>
       </section>
 
       <section title="User">
@@ -389,7 +389,7 @@
 
         <t>When the RC receives this response, it sends the RO to the
         interaction URL. When interacting with the RO, the AS MAY perform any
-        of the behaviors in the User Interaction section. </t>
+        of the behaviors in the User Interaction section.</t>
 
         <t>Once the RO has completed the interaction with the AS, the AS
         returns the user to the RC by redirecting the RO's browser to the RC's
@@ -415,7 +415,7 @@
         request. The RC then sends a transaction continuation request with the
         transaction handle returned in the interaction response and the (hash
         of?) the interaction handle returned as a query parameter to the
-        callback URL. </t>
+        callback URL.</t>
 
         <t>The client sends the hash of the interaction handle as the
         "interact_handle" field of the transaction continuation request.</t>
@@ -517,7 +517,7 @@
 
     <section title="Interaction at the AS">
       <t>When the RO is interacting with the AS at the interaction endpoint,
-      the AS MAY perform whatever actions it sees </t>
+      the AS MAY perform whatever actions it sees</t>
     </section>
 
     <section title="Error response">
@@ -540,7 +540,7 @@
 
       <t/>
 
-      <t>TODO: we should have a robust error mechanism. </t>
+      <t>TODO: we should have a robust error mechanism.</t>
     </section>
 
     <section title="Transaction continue request">
@@ -669,9 +669,7 @@
         <figure>
           <artwork><![CDATA[{
 
-  client: {
-    handle: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
-  }
+  client: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
 
 }]]></artwork>
         </figure>
@@ -707,20 +705,35 @@
 
         <t/>
 
-        <t>The RC sends its handle in lieu of the resource block of the
+        <t>The RC sends its handle in lieu of the resource block of the future
         transaction request:</t>
 
         <figure>
           <artwork><![CDATA[{
 
-  resource: {
-    handle: "foo"
-  }
+  resources: ["foo"]
 
 }]]></artwork>
         </figure>
 
         <t/>
+
+        <t>Handles and object values MAY be combined.</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  resources: [
+    "foo",
+    {
+      actions: ["read", "write"],
+      locations: ["https://exapmle.com/resource"]
+      data: ["foo", "bar"]
+    }
+  ]
+
+}]]></artwork>
+        </figure>
       </section>
 
       <section title="User handles">
@@ -752,9 +765,7 @@
         <figure>
           <artwork><![CDATA[{
 
-  user: {
-    handle: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
-  }
+  user: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
 
 }]]></artwork>
         </figure>
@@ -797,9 +808,7 @@
         <figure>
           <artwork><![CDATA[{
 
-  key: {
-    handle: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
-  }
+  key: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
 
 }]]></artwork>
         </figure>
@@ -939,6 +948,12 @@
     </references>
 
     <section title="Document History">
+      <t>- 01</t>
+
+      <t><list style="symbols">
+          <t>Made JSON multimodal for handle requests.</t>
+        </list></t>
+
       <t>- 00</t>
 
       <t><list style="symbols">
