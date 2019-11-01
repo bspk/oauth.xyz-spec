@@ -358,8 +358,11 @@
             which is used to validate the signature. MUST contain the "kid"
             field to identify the key in the signed object. </t>
 
-            <t hangText="cert">String serialized value of the certificate
-            thumbprint as per OAuth-MTLS.</t>
+            <t hangText="cert">PEM serialized value of the certificate used
+            for TLS transactions, with optional internal whitespace.</t>
+
+            <t hangText="cert#256">The certificate thumbprint calculated as
+            per <xref target="I-D.ietf-oauth-mtls">OAuth-MTLS</xref>.</t>
 
             <t hangText="did">The DID URL identifying the key (or keys) used
             to sign this request.</t>
@@ -373,8 +376,8 @@
         target="key-handle"/>. The keys referenced by a handle MUST be
         validated by the AS.</t>
 
-        <t>The following non-normative example shows all three key types, with
-        the detached JWS proofing mechanism:</t>
+        <t>The following non-normative example shows three key types, with the
+        detached JWS proofing mechanism:</t>
 
         <figure>
           <artwork><![CDATA[keys: {
