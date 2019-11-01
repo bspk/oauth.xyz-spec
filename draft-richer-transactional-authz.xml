@@ -126,6 +126,56 @@
       of this specification. The AS MUST ignore any sections that it does not
       understand.</t>
 
+      <t>A non-normative example of a transaction request is below:</t>
+
+      <t><figure>
+          <artwork><![CDATA[{
+    "resources": [
+        {
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        },
+        "dolphin-metadata"
+    ],
+    "key": {
+        "proof": "jwsd",
+        "jwks": {
+            "keys": [
+                {
+                    "kty": "RSA",
+                    "e": "AQAB",
+                    "kid": "xyz-1",
+                    "alg": "RS256",
+                    "n": "kOB5rR4Jv0GMeL...."
+                }
+            ]
+        }
+    },
+    "interact": {
+        "redirect": true,
+        "callback": {
+            "uri": "https://client.example.net/return/123455",
+            "nonce": "LKLTI25DK82FX4T4QFZC"
+        }
+    },
+    "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+    }
+}]]></artwork>
+        </figure></t>
+
       <section anchor="client-request" title="Display">
         <t>This section provides descriptive details of the RC software making
         the call, useful for displaying information about the client to the
@@ -172,8 +222,8 @@
 
             <t hangText="locations">URIs the RC will call at the RS</t>
 
-            <t hangText="data">types of data available to the RC at the RS's
-            API</t>
+            <t hangText="datatypes">types of data available to the RC at the
+            RS's API</t>
           </list></t>
 
         <figure>
@@ -181,7 +231,7 @@
   {
     actions: ["read", "write"],
     locations: ["https://exapmle.com/resource"]
-    data: ["foo", "bar"]
+    datatypes: ["foo", "bar"]
 
   }
 ]]]></artwork>
@@ -224,51 +274,70 @@
 
       <section anchor="interact-request" title="Interact">
         <t>This section provides details of how the RC can interact with the
-        RO. All interact requests MUST have the "type" field.</t>
+        RO. All fields are OPTIONAL, and the RC MAY include multiple possible
+        interaction modes. If a field is not present, it is interpreted as
+        negative support for that feature.</t>
 
         <t><list style="hanging">
-            <t hangText="type">REQUIRED. Type of interaction. MAY be
-            "redirect" or "device". The "redirect" type indicates that the RO
-            is capable of sending the user to an arbitrary URL to be returned
-            from the AS. The "device" type indicates that the RC is capable of
-            communicating a short, human-readable code to the RO, which the RO
-            can enter interactively to the AS.</t>
+            <t hangText="callback">If this object is present, it indicates the
+            RC is capable of receiving inbound messages from the RO's browser
+            in response to user interaction. This object contains the
+            following fields:<list style="hanging">
+                <t hangText="uri">REQUIRED. Indicates the URI to send the RO
+                to after interaction. This URI MAY be unique per transaction
+                and MUST be hosted or accessible by the RC. This URI MUST NOT
+                contain any fragment component. This URI MUST be protected by
+                HTTPS, be hosted on a server local to the user's browser
+                ("localhost"), or use an application-specific URI scheme. If
+                the RC needs any state information to tie to the front channel
+                interaction response, it MUST encode that into the callback
+                URI. The allowable URIs and URI patterns MAY be limited by the
+                AS based on the RC's presented key information. The callback
+                URI SHOULD be presented to the RO during the interaction phase
+                before redirect.</t>
 
-            <t hangText="callback">OPTIONAL. IF the RC is capable of receiving
-            inbound messages from the RO's browser, this indicates the URI to
-            send the RO to after interaction. This URI SHOULD (MUST?) be
-            unique per transaction and MUST be hosted or accessible by the RC.
-            This URI MUST NOT contain any fragment component. This URI MUST be
-            protected by HTTPS, be hosted on a server local to the user's
-            browser ("localhost"), or use an application-specific URI scheme.
-            If the RC needs any state information to tie to the front channel
-            interaction response, it MUST encode that into the callback URI.
-            The allowable URIs and URI patterns MAY be limited by the AS based
-            on the RC's presented key information. The callback URI SHOULD be
-            presented to the RO during the interaction phase before
-            redirect.</t>
+                <t hangText="nonce">REQUIRED. Unique value to be used in the
+                calculation of the "hash" query parameter on the callback URL,
+                must be sufficiently random to be unguessable by an attacker.
+                MUST be generated by the RC as a unique value for this
+                transaction.</t>
+              </list></t>
 
-            <t hangText="nonce">REQUIRED if the "callback" parameter is used.
-            Unique value to be used in the calculation of the "hash" query
-            parameter on the callback URL, must be sufficiently random to be
-            unguessable by an attacker. MUST be generated by the RC as a
-            unique value for this transaction.</t>
+            <t hangText="redirect">If this is set to true, the RC is capable
+            of redirecting the RO to an arbitrary interaction URL as described
+            in <xref target="user-interaction"/>. The RC MAY communicate the
+            URI to the user through a browser redirection, a QR code, or some
+            other mechanism.</t>
+
+            <t hangText="user_code">If this is set to true, the RC is capable
+            of displaying a short user code to the user and directing them to
+            a fixed URL as descrbed in <xref target="user-interaction"/>.</t>
+
+            <t hangText="didcomm">If this is set to true, the RC is capable of
+            relaying a DIDComm message to an agent or wallet.</t>
+
+            <t hangText="didcomm_query">If this is set to true, the RC is
+            capable of relaying a DIDComm query to an agent or wallet.</t>
           </list></t>
 
         <t>This section MUST NOT be represented by a handle reference. (Note:
-        this decision is largely due to the "nonce" and "callback" being
-        variable per transaction. We could allow a handle but restrict it to
-        device-only -- but in that case, it's simpler and shorter to just send
-        the device type.)</t>
+        this decision is largely due to the "callback" section being variable
+        per transaction. We could allow a handle but restrict it to
+        non-callback methods -- but in that case, it's simpler and shorter to
+        just send the booleans instead of having a special case.)</t>
+
+        <t>The following example is from an RC that can redirect to the
+        interaction endpoint and receive returns on a callback URI:</t>
 
         <t><figure>
-            <artwork><![CDATA[{
-    "interact": {
-        "type": "redirect",
-        "callback": "https://example.com/client/123456",
+            <artwork><![CDATA["interact": {
+    "redirect": true,
+    "callback": {
+        "uri": "https://example.com/client/123456",
         "nonce": "VJLO6A4CAYLBXHTR0KRO"
     }
-}]]></artwork>
+}
+]]></artwork>
           </figure></t>
       </section>
 
@@ -311,7 +380,17 @@
           <artwork><![CDATA[keys: {
 
   proof: "jwsd",
-  jwks: { keys: [ alg: RS256, kty: RSA, n: ... ] },
+  jwks: {
+      "keys": [
+          {
+              "kty": "RSA",
+              "e": "AQAB",
+              "kid": "xyz-1",
+              "alg": "RS256",
+              "n": "kOB5rR4Jv0GMeL...."
+          }
+      ]
+  },
   cert: "MII....",
   did: "did:v:foo...."
 
@@ -329,16 +408,57 @@
       items.</t>
 
       <t>The AS responds to the RC based on the type of interaction supported
-      by the RC in the transaction request.</t>
+      by the RC in the transaction request. The AS MAY respond with mutliple
+      possible interaction methods to be chosen by the RC. For example, if the
+      RC indicates that it can handle redirects and user codes and has a
+      callback URI, it would send a transaction request like this:</t>
 
-      <t>This response can indicate a set of keys are bound to the transaction
-      as in Key Binding. This response includes a transaction handle as
-      described in <xref target="transaction-handle"/>.</t>
+      <t><figure>
+          <artwork><![CDATA[{
+    "interact": {
+        "redirect": true,
+        "user_code": true,
+        "callback": {
+            "uri": "https://client.example.net/return/123455",
+            "nonce": "LKLTI25DK82FX4T4QFZC"
+        }
+    },
+    "resources": [
+        "dolphin-metadata"
+    ],
+    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+    }
+}]]></artwork>
+        </figure></t>
+
+      <t>The AS would then respond with a transaction response like this:</t>
+
+      <t><figure>
+          <artwork><![CDATA[{
+    "interaction_url": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
+    "server_nonce": "MBDOFXG4Y5CVJCX821LH",
+    "user_code": {
+        "url": "https://server.example.com/interact/device",
+        "code": "A1BC-3DFF"
+    },
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    }
+}]]></artwork>
+        </figure></t>
+
+      <t>This response MUST include a transaction handle as described in <xref
+      target="transaction-handle"/> so that the transaction can continue after
+      the user has interacted.</t>
 
       <section anchor="redirect-response" title="Redirect interaction">
         <t>If the RC supports a "redirect" style interaction, the AS creates a
         unique interaction URL and returns it to the RC. This URL MUST be
-        associated with a single pending transaction.</t>
+        associated with the current transaction and no other transaction. </t>
 
         <t><list style="hanging">
             <t hangText="interaction_url">The interaction URL that the RC will
@@ -349,10 +469,6 @@
             This URL MUST be protected by HTTPS. This URL MUST NOT contain any
             fragment component.</t>
 
-            <t hangText="server_nonce">A unique value from the server included
-            in the calculation of the "hash" value returned in the callback
-            response.</t>
-
             <t hangText="handle">The transaction handle to use in the continue
             request once the RO has been returned to the RC via the callback
             URL. See the section on transaction handles<xref
@@ -361,11 +477,11 @@
 
         <figure>
           <artwork><![CDATA[{ 
-
   interaction_url: "https://server.example.com/interact/123asdfklj",
   server_nonce: "MBDOFXG4Y5CVJCX821LH",
+
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     type: "bearer"
   }
 }]]></artwork>
@@ -394,11 +510,33 @@
         in the User Interaction section <xref target="user-interaction"/>.</t>
       </section>
 
-      <section anchor="callback-response" title="Callback response">
+      <section anchor="callback-response" title="Interaction URI return">
         <t>If the RC has supplied a callback URL in its interact request <xref
-        target="interact-request"/>, the AS returns the user to the RC by
-        redirecting the RO's browser to the RC's callback URL presented at the
-        start of the transaction, with the addition of two query
+        target="interact-request"/>, the AS returns a nonce in its interaction
+        response.</t>
+
+        <t><list style="hanging">
+            <t hangText="server_nonce">A unique value from the server included
+            in the calculation of the "hash" value returned in the callback
+            response. REQUIRED if the client has sent a "callback" parameter
+            in its interaction request.</t>
+          </list></t>
+
+        <t><figure>
+            <artwork><![CDATA[{ 
+  interaction_url: "https://server.example.com/interact/123asdfklj",
+  server_nonce: "MBDOFXG4Y5CVJCX821LH",
+
+  handle: {
+    value: "80UPRY5NM33OMUKMKSKU",
+    type: "bearer"
+  }
+}]]></artwork>
+          </figure></t>
+
+        <t>When interaction has concluded, the AS returns the user to the RC
+        by redirecting the RO's browser to the RC's callback URL presented at
+        the start of the transaction, with the addition of two query
         parameters.</t>
 
         <t><list style="hanging">
@@ -425,6 +563,8 @@
   &interact_handle=4IFWWIKYBC2PQ6U56NL1]]></artwork>
         </figure>
 
+        <t/>
+
         <t>Upon processing this request to the callback URL, the RC MUST
         calculate the expected value of the "hash" parameter as described in
         <xref target="interaction-hash"/> and compare that value to the "hash"
@@ -436,8 +576,8 @@
         <t>The RC sends (the hash of? example here is hashed) the interaction
         handle as the "interact_handle" field of the transaction continuation
         request<xref target="transaction-continue"/>, using the transaction
-        handle <xref target="transaction-continue"/> returned in the most
-        recent transaction response from the AS.</t>
+        handle <xref target="transaction-handle"/> returned in the most recent
+        transaction response from the AS.</t>
 
         <t><figure>
             <artwork><![CDATA[{
@@ -456,7 +596,7 @@
         "nonce" value sent by the RC in the interaction section of the initial
         transaction request <xref target="interact-request"/>, the
         "server_nonce" value returned in the transaction response <xref
-        target="redirect-response"/>, and the "interact_handle" returned in
+        target="callback-response"/>, and the "interact_handle" returned in
         the callback response <xref target="callback-response"/>. These three
         values are concatenated to each other in this order using a single
         newline character as a separator between the fields. There is no
@@ -483,8 +623,8 @@ MBDOFXG4Y5CVJCX821LH
       </section>
 
       <section anchor="device-response" title="Secondary device interaction">
-        <t>If the RC supports a "device" style interaction, the AS creates a
-        unique user interaction code and returns it to the RC. The RC
+        <t>If the RC supports a "user_code" style interaction, the AS creates
+        a unique user interaction code and returns it to the RC. The RC
         communicates this code to the RO and instructs the RO to enter the
         code at a URL hosted by the AS.</t>
 
@@ -571,7 +711,7 @@ MBDOFXG4Y5CVJCX821LH
 
   wait: 30,
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     type: "bearer"
   }
 
@@ -580,9 +720,9 @@ MBDOFXG4Y5CVJCX821LH
     </section>
 
     <section anchor="user-interaction" title="Interaction at the AS">
-      <t>When the RO is interacting with the AS at the interaction endpoint,
-      the AS MAY perform whatever actions it sees fit, including but not
-      limited to:</t>
+      <t>When the RO is interacting with the AS at the interaction uri, the AS
+      MAY perform whatever actions it sees fit, including but not limited
+      to:</t>
 
       <t><list style="symbols">
           <t>authenticate the RO</t>
@@ -680,6 +820,13 @@ MBDOFXG4Y5CVJCX821LH
       <t>The RC MUST prove all keys initially sent in the transaction
       request<xref target="key-request"/> as described in <xref
       target="binding-keys"/>.</t>
+
+      <t>[[ Note: should we allowe the client to mutate the transaction at
+      this point? We already allow the presentation of the interaction handle,
+      and any messaging protocols like DIDComm would allow additional work to
+      be done here. But do we want the client to be able to specify additional
+      resources, or new interaction methods, or anything like that? I'm
+      inclined not to so that's been left out for now. ]]</t>
     </section>
 
     <section anchor="token-response" title="Token response">
@@ -704,7 +851,7 @@ MBDOFXG4Y5CVJCX821LH
     type: "bearer"
   },
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     type: "bearer"
   }
 
@@ -805,7 +952,7 @@ MBDOFXG4Y5CVJCX821LH
           <artwork><![CDATA[{
 
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     method: "bearer"
   },
   display_handle: {
@@ -846,7 +993,7 @@ MBDOFXG4Y5CVJCX821LH
           <artwork><![CDATA[{
 
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     method: "bearer"
   },
   resource_handle: {
@@ -921,7 +1068,7 @@ MBDOFXG4Y5CVJCX821LH
           <artwork><![CDATA[{
 
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     method: "bearer"
   },
   user_handle: {
@@ -965,7 +1112,7 @@ MBDOFXG4Y5CVJCX821LH
           <artwork><![CDATA[{
 
   handle: {
-    value: "tghji76ytghj9876tghjko987yh",
+    value: "80UPRY5NM33OMUKMKSKU",
     method: "bearer"
   },
   key_handle: {
@@ -1203,6 +1350,9 @@ MBDOFXG4Y5CVJCX821LH
           <t>Changed "key" to "keys".</t>
 
           <t>Separated key proofing from key presentation.</t>
+
+          <t>Separated interaction methods into booleans instead of "type"
+          field. </t>
         </list></t>
 
       <t>- 02</t>
