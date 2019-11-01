@@ -10,7 +10,7 @@
 <?rfc inline="yes"?>
 <?rfc compact="yes"?>
 <?rfc subcompact="no"?>
-<rfc category="std" docName="draft-richer-transactional-authz-02"
+<rfc category="std" docName="draft-richer-transactional-authz-03"
      ipr="trust200902">
   <front>
     <title abbrev="transactional-authz">Transactional Authorization</title>
