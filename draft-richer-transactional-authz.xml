@@ -193,12 +193,10 @@
           </list></t>
 
         <figure>
-          <artwork><![CDATA[display: {
-
-  name: "Display Name",
-  uri: "https://example.com/client"
-
-}]]></artwork>
+          <artwork><![CDATA[    "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+    }]]></artwork>
         </figure>
 
         <t/>
@@ -227,14 +225,24 @@
           </list></t>
 
         <figure>
-          <artwork><![CDATA[resources: [
-  {
-    actions: ["read", "write"],
-    locations: ["https://exapmle.com/resource"]
-    datatypes: ["foo", "bar"]
-
-  }
-]]]></artwork>
+          <artwork><![CDATA[    "resources": [
+        {
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        },
+        "dolphin-metadata"
+    ]]]></artwork>
         </figure>
 
         <t/>
@@ -258,12 +266,10 @@
           </list></t>
 
         <figure>
-          <artwork><![CDATA[user: {
-
-  assertion: "eyj0....",
-  type: "oidc_id_token"
-
-}]]></artwork>
+          <artwork><![CDATA[    "user": {
+        "assertion": "eyJraWQiOiIxZTlnZGs3IiwiYWxnIjoiUlMyNTYifQ.ewogImlzcyI6ICJodHRwOi8vc2VydmVyLmV4YW1wbGUuY29tIiwKICJzdWIiOiAiMjQ4Mjg5NzYxMDAxIiwKICJhdWQiOiAiczZCaGRSa3F0MyIsCiAibm9uY2UiOiAibi0wUzZfV3pBMk1qIiwKICJleHAiOiAxMzExMjgxOTcwLAogImlhdCI6IDEzMTEyODA5NzAsCiAibmFtZSI6ICJKYW5lIERvZSIsCiAiZ2l2ZW5fbmFtZSI6ICJKYW5lIiwKICJmYW1pbHlfbmFtZSI6ICJEb2UiLAogImdlbmRlciI6ICJmZW1hbGUiLAogImJpcnRoZGF0ZSI6ICIwMDAwLTEwLTMxIiwKICJlbWFpbCI6ICJqYW5lZG9lQGV4YW1wbGUuY29tIiwKICJwaWN0dXJlIjogImh0dHA6Ly9leGFtcGxlLmNvbS9qYW5lZG9lL21lLmpwZyIKfQ.rHQjEmBqn9Jre0OLykYNnspA10Qql2rvx4FsD00jwlB0Sym4NzpgvPKsDjn_wMkHxcp6CilPcoKrWHcipR2iAjzLvDNAReF97zoJqq880ZD1bwY82JDauCXELVR9O6_B0w3K-E7yM2macAAgNCUwtik6SjoSUZRcf-O5lygIyLENx882p6MtmwaL1hd6qn5RZOQ0TLrOYu0532g9Exxcm-ChymrB4xLykpDj3lUivJt63eEGGN6DH5K6o33TcxkIjNrCD4XB1CKKumZvCedgHHF3IAK4dVEDSUoGlH9z4pP_eWYNXvqQOjGs-rDaQzUHl6cQQWNiDpWOl_lxXjQEvQ",
+        "type": "oidc_id_token"
+    }]]></artwork>
         </figure>
 
         <t/>
@@ -380,24 +386,22 @@
         detached JWS proofing mechanism:</t>
 
         <figure>
-          <artwork><![CDATA[keys: {
-
-  proof: "jwsd",
-  jwks: {
-      "keys": [
-          {
-              "kty": "RSA",
-              "e": "AQAB",
-              "kid": "xyz-1",
-              "alg": "RS256",
-              "n": "kOB5rR4Jv0GMeL...."
-          }
-      ]
-  },
-  cert: "MII....",
-  did: "did:v:foo...."
-
-}]]></artwork>
+          <artwork><![CDATA[    "keys": {
+        "proof": "jwsd",
+        "jwks": {
+            "keys": [
+                {
+                    "kty": "RSA",
+                    "e": "AQAB",
+                    "kid": "xyz-1",
+                    "alg": "RS256",
+                    "n": "kOB5rR4Jv0GMeLaY6_It_r3ORwdf8ci_JtffXyaSx8xY..."
+                }
+            ]
+        },
+        "cert": "MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFA...",
+        "did": "did:example:CV3BVVXK2PWWLCRQLRFU#xyz-1"
+    }]]></artwork>
         </figure>
       </section>
     </section>
@@ -464,29 +468,26 @@
         associated with the current transaction and no other transaction. </t>
 
         <t><list style="hanging">
-            <t hangText="interaction_url">The interaction URL that the RC will
-            direct the RO to. This URL MUST be unique to this transaction
-            request. The URL SHOULD contain a random portion of sufficient
-            entropy so as not to be guessable by the user. The URL MUST NOT
-            contain the transaction handle or any RC identifying information.
-            This URL MUST be protected by HTTPS. This URL MUST NOT contain any
-            fragment component.</t>
+            <t hangText="interaction_url">REQUIRED. The interaction URL that
+            the RC will direct the RO to. This URL MUST be unique to this
+            transaction request. The URL SHOULD contain a random portion of
+            sufficient entropy so as not to be guessable by the user. The URL
+            MUST NOT contain the transaction handle or any RC identifying
+            information. This URL MUST be protected by HTTPS. This URL MUST
+            NOT contain any fragment component.</t>
 
-            <t hangText="handle">The transaction handle to use in the continue
-            request once the RO has been returned to the RC via the callback
-            URL. See the section on transaction handles<xref
-            target="transaction-handle"> </xref>.</t>
+            <t hangText="handle">REQUIRED. The transaction handle to use in
+            the continue the transaction <xref
+            target="transaction-continue"/>.</t>
           </list></t>
 
         <figure>
-          <artwork><![CDATA[{ 
-  interaction_url: "https://server.example.com/interact/123asdfklj",
-  server_nonce: "MBDOFXG4Y5CVJCX821LH",
-
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    type: "bearer"
-  }
+          <artwork><![CDATA[{
+    "interaction_url": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    }
 }]]></artwork>
         </figure>
 
@@ -519,21 +520,23 @@
         response.</t>
 
         <t><list style="hanging">
-            <t hangText="server_nonce">A unique value from the server included
-            in the calculation of the "hash" value returned in the callback
-            response. REQUIRED if the client has sent a "callback" parameter
-            in its interaction request.</t>
+            <t hangText="server_nonce">REQUIRED. A unique value from the
+            server included in the calculation of the "hash" value returned in
+            the callback response. REQUIRED if the client has sent a
+            "callback" parameter in its interaction request.</t>
           </list></t>
 
-        <t><figure>
-            <artwork><![CDATA[{ 
-  interaction_url: "https://server.example.com/interact/123asdfklj",
-  server_nonce: "MBDOFXG4Y5CVJCX821LH",
+        <t>This example also includes the interaction URL from <xref
+        target="redirect-response"/>.</t>
 
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    type: "bearer"
-  }
+        <t><figure>
+            <artwork><![CDATA[{
+    "interaction_url": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
+    "server_nonce": "MBDOFXG4Y5CVJCX821LH",
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    }
 }]]></artwork>
           </figure></t>
 
@@ -632,19 +635,24 @@ MBDOFXG4Y5CVJCX821LH
         code at a URL hosted by the AS.</t>
 
         <t><list style="hanging">
-            <t hangText="user_code">REQUIRED. A short code that the user can
-            type into an authorization server. This string MUST be
-            case-insensitive, MUST consist of only easily typeable characters
-            (such as letters or numbers). The time in which this code will be
-            accepted SHOULD be short lived, such as several minutes.</t>
+            <t hangText="user_code">REQUIRED. An object containing the user
+            code information.<list style="hanging">
+                <t hangText="user_code">REQUIRED. A short code that the user
+                can type into an authorization server. This string MUST be
+                case-insensitive, MUST consist of only easily typeable
+                characters (such as letters or numbers). The time in which
+                this code will be accepted SHOULD be short lived, such as
+                several minutes.</t>
 
-            <t hangText="user_code_url">RECOMMENDED. The interaction URL that
-            the RC will direct the RO to. This URL SHOULD be stable at the AS
-            such that clients can be statically configured with it.</t>
+                <t hangText="user_code_url">RECOMMENDED. The interaction URL
+                that the RC will direct the RO to. This URL SHOULD be stable
+                at the AS such that clients can be statically configured with
+                it.</t>
+              </list></t>
 
             <t hangText="wait">RECOMMENDED. The amount of time to wait before
             polling again, in integer seconds. If not specified, the default
-            is 30 seconds.</t>
+            is 30 seconds. See <xref target="wait-response"/>.</t>
 
             <t hangText="handle">REQUIRED. The transaction handle to use in
             the continue request. See the section on transaction handles<xref
@@ -653,14 +661,15 @@ MBDOFXG4Y5CVJCX821LH
 
         <figure>
           <artwork><![CDATA[{
-
-  user_code: "ABCD1234"
-  user_code_url: "https://server.example.com/device",
-  wait: 30,
-  handle: {
-    value: "tghji76ytghj9876tghjko987yh",
-    type: "bearer"
-  }
+    "user_code": {
+        "url": "https://server.example.com/interact/device",
+        "code": "A1BC-3DFF"
+    },
+    "wait": 30,
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    }
 }]]></artwork>
         </figure>
 
@@ -711,13 +720,11 @@ MBDOFXG4Y5CVJCX821LH
 
       <figure>
         <artwork><![CDATA[{
-
-  wait: 30,
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    type: "bearer"
-  }
-
+    "wait": 30,
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    }
 }]]></artwork>
       </figure>
     </section>
@@ -761,7 +768,7 @@ MBDOFXG4Y5CVJCX821LH
       <figure>
         <artwork><![CDATA[{
 
-  error: user_denied
+  "error": "user_denied"
 
 }]]></artwork>
       </figure>
@@ -813,7 +820,7 @@ MBDOFXG4Y5CVJCX821LH
       <figure>
         <artwork><![CDATA[{
 
-  handle: "tghji76ytghj9876tghjko987yh"
+  "handle": "tghji76ytghj9876tghjko987yh"
 
 }]]></artwork>
       </figure>
@@ -848,16 +855,14 @@ MBDOFXG4Y5CVJCX821LH
 
       <figure>
         <artwork><![CDATA[{
-
-  access_token: {
-    value: "08ur4kahfga09u23rnkjasdf",
-    type: "bearer"
-  },
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    type: "bearer"
-  }
-
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "type": "bearer"
+    },
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    }
 }]]></artwork>
       </figure>
 
@@ -953,16 +958,14 @@ MBDOFXG4Y5CVJCX821LH
 
         <figure>
           <artwork><![CDATA[{
-
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    method: "bearer"
-  },
-  display_handle: {
-    value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
-    method: "bearer"
-  }
-
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    },
+    "display_handle": {
+        "value": "VBUEOIQA82PBY2ZDJW7Q",
+        "type": "bearer"
+    }
 }]]></artwork>
         </figure>
 
@@ -974,7 +977,7 @@ MBDOFXG4Y5CVJCX821LH
         <figure>
           <artwork><![CDATA[{
 
-  display: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  "display": "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
 
 }]]></artwork>
         </figure>
@@ -994,16 +997,15 @@ MBDOFXG4Y5CVJCX821LH
 
         <figure>
           <artwork><![CDATA[{
-
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    method: "bearer"
-  },
-  resource_handle: {
-    value: "foo",
-    method: "bearer"
-  }
-
+    "wait": 30,
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    },
+    "resources_handle": {
+        "value": "KLKP36N7GPOKRF3KGH5N",
+        "type": "bearer"
+    }
 }]]></artwork>
         </figure>
 
@@ -1015,27 +1017,37 @@ MBDOFXG4Y5CVJCX821LH
         <figure>
           <artwork><![CDATA[{
 
-  resources: ["foo"]
+  "resources": ["KLKP36N7GPOKRF3KGH5N"]
 
 }]]></artwork>
         </figure>
 
         <t/>
 
-        <t>Handles and object values MAY be combined in a single request.</t>
+        <t>Note that handles and object values MAY be combined in a single
+        request.</t>
 
         <figure>
           <artwork><![CDATA[{
-
-  resources: [
-    "foo",
-    {
-      actions: ["read", "write"],
-      locations: ["https://exapmle.com/resource"]
-      data: ["foo", "bar"]
-    }
-  ]
-
+    "resources": [
+        {
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        },
+        "dolphin-metadata", 
+        "KLKP36N7GPOKRF3KGH5N"
+    ]
 }]]></artwork>
         </figure>
 
@@ -1069,16 +1081,15 @@ MBDOFXG4Y5CVJCX821LH
 
         <figure>
           <artwork><![CDATA[{
-
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    method: "bearer"
-  },
-  user_handle: {
-    value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
-    method: "bearer"
-  }
-
+    "wait": 30,
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    },
+    "user_handle": {
+        "value": "XUT2MFM1XBIKJKSDU8QM",
+        "type": "bearer"
+    }
 }]]></artwork>
         </figure>
 
@@ -1090,7 +1101,7 @@ MBDOFXG4Y5CVJCX821LH
         <figure>
           <artwork><![CDATA[{
 
-  user: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  "user": "XUT2MFM1XBIKJKSDU8QM"
 
 }]]></artwork>
         </figure>
@@ -1113,16 +1124,15 @@ MBDOFXG4Y5CVJCX821LH
 
         <figure>
           <artwork><![CDATA[{
-
-  handle: {
-    value: "80UPRY5NM33OMUKMKSKU",
-    method: "bearer"
-  },
-  key_handle: {
-    value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
-    method: "bearer"
-  }
-
+    "wait": 30,
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    },
+    "key_handle": {
+        "value": "7C7C4AZ9KHRS6X63AJAO",
+        "type": "bearer"
+    }
 }]]></artwork>
         </figure>
 
@@ -1134,7 +1144,7 @@ MBDOFXG4Y5CVJCX821LH
         <figure>
           <artwork><![CDATA[{
 
-  keys: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  "keys": "7C7C4AZ9KHRS6X63AJAO"
 
 }]]></artwork>
         </figure>
