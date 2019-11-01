@@ -275,42 +275,43 @@
       <section anchor="key-request" title="Keys">
         <t>This section lists the keys that the RC can present proof of
         ownership. The RC MUST send at least one key. The RC MAY send more
-        than one key, but only one key of each type. (Note: Do we want to have
-        multiple keys of various types instead?)</t>
+        than one key format, but all keys MUST be equivalent. </t>
 
         <t><list style="hanging">
+            <t hangText="proof">The form of proof that the RC will use when
+            presenting the key to the AS. The valid values of this field and
+            the processing requirements for each are detailed in <xref
+            target="binding-keys"/>. This field is REQUIRED.</t>
+
             <t hangText="jwks">Value of the public key as a JWK Set JSON
             object [Note: should this be a single JWK instead? And do we want
             to bother with url-based references?]. MUST contain an "alg" field
             which is used to validate the signature. MUST contain the "kid"
-            field to identify the key in the signed object. This key type MUST
-            be proved using either the detached JWS or HTTP-Signing
-            mechanisms.</t>
+            field to identify the key in the signed object. </t>
 
             <t hangText="cert">String serialized value of the certificate
-            thumbprint as per OAuth-MTLS. This key type MUST be proved using
-            Mutual TLS.</t>
+            thumbprint as per OAuth-MTLS.</t>
 
             <t hangText="did">The DID URL identifying the key (or keys) used
-            to sign this request. This key type MUST be proved using [[ note
-            -- how? ]]</t>
+            to sign this request.</t>
           </list></t>
 
         <t>The RC MUST provide proof of possession of all presented keys<xref
         target="binding-keys"/>. All presented keys MUST be validated by the
-        AS as per the Key Validation section.</t>
+        AS using the method defined by proof.</t>
 
         <t>This section MAY also be presented as a key handle reference <xref
         target="key-handle"/>. The keys referenced by a handle MUST be
         validated by the AS.</t>
 
-        <t>The following non-normative example shows all three key
-        methods:</t>
+        <t>The following non-normative example shows all three key types, with
+        the detached JWS proofing mechanism:</t>
 
         <figure>
-          <artwork><![CDATA[key: {
+          <artwork><![CDATA[keys: {
 
-  jwks: { keys: [ alg: RS256, kty: ... ] },
+  proof: "jwsd",
+  jwks: { keys: [ alg: RS256, kty: RSA, n: ... ] },
   cert: "MII....",
   did: "did:v:foo...."
 
@@ -696,7 +697,7 @@ MBDOFXG4Y5CVJCX821LH
         </list></t>
 
       <figure>
-        <artwork><![CDATA[key: {
+        <artwork><![CDATA[{
 
   access_token: {
     value: "08ur4kahfga09u23rnkjasdf",
@@ -983,7 +984,7 @@ MBDOFXG4Y5CVJCX821LH
         <figure>
           <artwork><![CDATA[{
 
-  key: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  keys: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
 
 }]]></artwork>
         </figure>
@@ -991,33 +992,48 @@ MBDOFXG4Y5CVJCX821LH
         <t/>
 
         <t>When the AS receives a key handle, it MUST validate that the keys
-        referenced by the handle are bound to the current transaction
-        request.</t>
+        referenced by the handle are bound to the current transaction request
+        using the proof method referenced by the handle.</t>
       </section>
     </section>
 
     <section anchor="binding-keys" title="Binding Keys">
       <t>Any keys presented by the RC to the AS or RS MUST be validated as
-      part of the transaction in which they are presented. Any keys bound to
-      the transaction are indicated by the bound_keys section of the
-      transaction response. Any keys referenced in this section MUST be used
-      with all future transaction requests.</t>
+      part of the transaction in which they are presented.The type of binding
+      used is indicated by the proof parameter of the keys section in the
+      transaction request. Values defined by this specification are as
+      follows:</t>
 
-      <section title="Binding a key to a transaction">
-        <t>All keys presented by the RC in the transaction request<xref
-        target="transaction-request"/> MUST be proved in all transaction
-        continuation requests<xref target="transaction-continue"/> for that
-        transaction. The AS MUST validate all keys presented by the RC or
-        referenced in the transaction.</t>
-      </section>
+      <t><list style="hanging">
+          <t hangText="jwsd">A detached JWS signature header</t>
+
+          <t hangText="mtls">Mutual TLS certificate verification</t>
+
+          <t hangText="dpop">OAuth DPoP key proof header</t>
+
+          <t hangText="httpsig">HTTP Signing signature header</t>
+
+          <t hangText="oauthpop">OAuth PoP key proof authentication header</t>
+        </list></t>
+
+      <t>Additional values can be defined by a registry.</t>
+
+      <t>All keys presented by the RC in the transaction request<xref
+      target="transaction-request"/> MUST be proved in all transaction
+      continuation requests<xref target="transaction-continue"/> for that
+      transaction. The AS MUST validate all keys presented by the RC or
+      referenced in the transaction at each call to the transaction endpoint.
+      The client MUST NOT use a different key during the transaction. </t>
 
       <section anchor="detached-jws" title="Detached JWS">
-        <t>To sign a request to the transaction endpoint, the RC takes the
-        serialized body of the request and signs it using detached JWS <xref
+        <t>This method is indicated by <spanx style="verb">jwsd</spanx> in the
+        <spanx style="verb">proof</spanx> field of a key request. To sign a
+        request to the transaction endpoint, the RC takes the serialized body
+        of the request and signs it using detached JWS <xref
         target="RFC7797"/>. The header of the JWS MUST contain the kid field
-        of the key bound to this RC during this transaction. The header MUST
-        contain an alg field appropriate for the key identified by kid and
-        MUST NOT be none.</t>
+        of the key bound to this RC during this transaction. The JWS header
+        MUST contain an alg field appropriate for the key identified by kid
+        and MUST NOT be none.</t>
 
         <t>The RC presents the signature in the JWS-Signature HTTP Header
         field. [Note: this is a custom header field, do we need this?]</t>
@@ -1035,21 +1051,44 @@ MBDOFXG4Y5CVJCX821LH
       </section>
 
       <section anchor="mtls" title="Mutual TLS">
-        <t>The RC presents its client certificate during TLS negotiation with
-        the server (either AS or RS). The AS or RS takes the thumbprint of the
-        client certificate presented during mutual TLS negotiation and
-        compares that thumbprint to the thumbprint presented by the RC
-        application.</t>
+        <t>This method is indicated by <spanx style="verb">mtls</spanx> in the
+        <spanx style="verb">proof</spanx> field of a key request. The RC
+        presents its client certificate during TLS negotiation with the server
+        (either AS or RS). The AS or RS takes the thumbprint of the client
+        certificate presented during mutual TLS negotiation and compares that
+        thumbprint to the thumbprint presented by the RC application as
+        described in <xref target="I-D.ietf-oauth-mtls"/> section 3.</t>
       </section>
 
-      <section anchor="did" title="Validating DID">
-        <t>[[ Note: validation of DID-based keys could potentially be either
-        detached JWS or MTLS, depending on the type of key used, or some other
-        validation mechanism. ]] The RC signs the request using [some HTTP
-        signing mechanism] and its private key, and attaches the signature to
-        the HTTP request using [a header method?]. [Note: is DID just a
-        key-lookup mechanism here or should we use a different kind of crypto
-        method as well?]</t>
+      <section title="DPoP">
+        <t>This method is indicated by <spanx style="verb">dpop</spanx> in the
+        <spanx style="verb">proof</spanx> field of a key request. The RC
+        creates a DPoP signature header as described in <xref
+        target="I-D.fett-oauth-dpop"/> section 2.</t>
+      </section>
+
+      <section title="HTTP Signing">
+        <t>This method is indicated by <spanx style="verb">httpsig</spanx> in
+        the <spanx style="verb">proof</spanx> field of a key request. The RC
+        creates an HTTP Signature header as described in <xref
+        target="I-D.cavage-http-signatures"/> section 4. The RC MUST calculate
+        and present the Digest header as defined in <xref
+        target="RFC3230"/>.</t>
+      </section>
+
+      <section title="OAuth PoP">
+        <t>This method is indicated by <spanx style="verb">oauthpop</spanx> in
+        the <spanx style="verb">proof</spanx> field of a key request. The RC
+        creates an HTTP Authorization PoP header as described in <xref
+        target="I-D.ietf-oauth-signed-http-request"/> section 4, with the
+        following additional requirements:</t>
+
+        <t><list style="symbols">
+            <t>The at (access token) field MUST be omitted [note: this is in
+            contrast to the requirements in the existing spec]</t>
+
+            <t>The b (body hash) field MUST be calculated and supplied</t>
+          </list></t>
       </section>
     </section>
 
@@ -1058,8 +1097,9 @@ MBDOFXG4Y5CVJCX821LH
     </section>
 
     <section anchor="IANA" title="IANA Considerations">
-      <t>This specification creates one registry and registers several values
-      into existing registries.</t>
+      <t>[We'll want a registry for key proof types, and maybe some other
+      field names. We'll need to register at least one header and maybe some
+      others?]</t>
     </section>
 
     <section anchor="Security" title="Security Considerations">
@@ -1077,23 +1117,33 @@ MBDOFXG4Y5CVJCX821LH
 
   <back>
     <references title="Normative References">
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.2119.xml'?>
+      <?rfc include='reference.RFC.2119.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7519.xml'?>
+      <?rfc include='reference.RFC.3230.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7662.xml'?>
+      <?rfc include='reference.RFC.7519.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6749.xml'?>
+      <?rfc include='reference.RFC.7662.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.6750.xml'?>
+      <?rfc include='reference.RFC.6749.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.7797.xml'?>
+      <?rfc include='reference.RFC.6750.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8126.xml'?>
+      <?rfc include='reference.RFC.7797.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8174.xml'?>
+      <?rfc include='reference.RFC.8126.xml'?>
 
-      <?rfc include='http://xml2rfc.ietf.org/public/rfc/bibxml/reference.RFC.8259.xml'?>
+      <?rfc include='reference.RFC.8174.xml'?>
+
+      <?rfc include='reference.RFC.8259.xml'?>
+
+      <?rfc include='reference.I-D.cavage-http-signatures.xml'?>
+
+      <?rfc include='reference.I-D.ietf-oauth-signed-http-request.xml'?>
+
+      <?rfc include='reference.I-D.ietf-oauth-mtls.xml'?>
+
+      <?rfc include='reference.I-D.fett-oauth-dpop.xml'?>
 
       <reference anchor="BCP195"
                  target="http://www.rfc-editor.org/info/bcp195">
@@ -1149,6 +1199,10 @@ MBDOFXG4Y5CVJCX821LH
 
           <t>Changed "client" section to "display" section, as well as
           associated handle.</t>
+
+          <t>Changed "key" to "keys".</t>
+
+          <t>Separated key proofing from key presentation.</t>
         </list></t>
 
       <t>- 02</t>
