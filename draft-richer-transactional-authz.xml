@@ -24,7 +24,7 @@
       </address>
     </author>
 
-    <date day="8" month="July" year="2019"/>
+    <date day="1" month="November" year="2019"/>
 
     <abstract>
       <t>This document defines a mechanism for delegating authorization to a
@@ -108,7 +108,7 @@
           applicable. This section is REQUIRED if the RC is capable of driving
           interaction with the user.</t>
 
-          <t hangText="client">Information about the RC making the request,
+          <t hangText="display">Information about the RC making the request,
           including display name, home page, logo, and other user-facing
           information. This section is RECOMMENDED.</t>
 
@@ -126,11 +126,12 @@
       of this specification. The AS MUST ignore any sections that it does not
       understand.</t>
 
-      <section anchor="client-request" title="Client">
+      <section anchor="client-request" title="Display">
         <t>This section provides descriptive details of the RC software making
-        the call. This section is a JSON object, and all fields are OPTIONAL.
-        The RC MAY send additional fields, and the AS MUST ignore all fields
-        that it does not understand.</t>
+        the call, useful for displaying information about the client to the
+        user during the authorization request. This section is a JSON object,
+        and all fields are OPTIONAL. The RC MAY send additional fields, and
+        the AS MUST ignore all fields that it does not understand.</t>
 
         <t><list style="hanging">
             <t hangText="name">Display name of the RC software</t>
@@ -142,7 +143,7 @@
           </list></t>
 
         <figure>
-          <artwork><![CDATA[client: {
+          <artwork><![CDATA[display: {
 
   name: "Display Name",
   uri: "https://example.com/client"
@@ -155,8 +156,8 @@
         <t>The AS SHOULD use this information in presenting any authorization
         screens to the RO during interaction.</t>
 
-        <t>The client information MAY instead be presented as a client handle
-        reference <xref target="client-handle"/>.</t>
+        <t>The display information MAY instead be presented as a display
+        handle reference <xref target="client-handle"/>.</t>
       </section>
 
       <section anchor="resource-request" title="Resource">
@@ -244,8 +245,8 @@
             interaction response, it MUST encode that into the callback URI.
             The allowable URIs and URI patterns MAY be limited by the AS based
             on the RC's presented key information. The callback URI SHOULD be
-            presented to the RO during the interaction phase before redirect.
-            </t>
+            presented to the RO during the interaction phase before
+            redirect.</t>
 
             <t hangText="nonce">REQUIRED if the "callback" parameter is used.
             Unique value to be used in the calculation of the "hash" query
@@ -349,7 +350,7 @@
 
             <t hangText="server_nonce">A unique value from the server included
             in the calculation of the "hash" value returned in the callback
-            response. </t>
+            response.</t>
 
             <t hangText="handle">The transaction handle to use in the continue
             request once the RO has been returned to the RC via the callback
@@ -401,7 +402,7 @@
 
         <t><list style="hanging">
             <t hangText="hash">REQUIRED. The interaction hash value as
-            described in <xref target="interaction-hash"/>. </t>
+            described in <xref target="interaction-hash"/>.</t>
 
             <t hangText="interact_handle">REQUIRED. A shared secret associated
             with this interaction. This value MUST be sufficiently random so
@@ -783,21 +784,21 @@ MBDOFXG4Y5CVJCX821LH
         transaction.</t>
       </section>
 
-      <section anchor="client-handle" title="Client handles">
-        <t>RC handles stand in for the client section of the initial
+      <section anchor="client-handle" title="Display handles">
+        <t>RC handles stand in for the display section of the initial
         transaction request<xref target="client-request"/>. The AS MAY issue a
-        client handle to a RC as part of a static registration process,
+        display handle to a RC as part of a static registration process,
         analogous to a client ID in OAuth 2, allowing the RC to be associated
         with an AS-side configuration that does not change at runtime. Such
         static processes SHOULD be bound to a set of keys known only to the RC
         software.</t>
 
-        <t>Client handles MAY be issued by the RS in response to a transaction
-        request. The AS MAY associate the client handle to the interact,
-        resource, and key handles issued in the same response, requiring them
-        to be used together. When the RC receives this handle, it MAY present
-        the handle in future transaction requests instead of sending its
-        information again.</t>
+        <t>Display handles MAY be issued by the RS in response to a
+        transaction request. The AS MAY associate the display handle to the
+        interact, resource, and key handles issued in the same response,
+        requiring them to be used together. When the RC receives this handle,
+        it MAY present the handle in future transaction requests instead of
+        sending its information again.</t>
 
         <figure>
           <artwork><![CDATA[{
@@ -806,7 +807,7 @@ MBDOFXG4Y5CVJCX821LH
     value: "tghji76ytghj9876tghjko987yh",
     method: "bearer"
   },
-  client_handle: {
+  display_handle: {
     value: "absc2948afgdkjnasdf9082ur3kjasdfasdf89",
     method: "bearer"
   }
@@ -816,13 +817,13 @@ MBDOFXG4Y5CVJCX821LH
 
         <t/>
 
-        <t>The RC sends its handle in lieu of the client block of the
+        <t>The RC sends its handle in lieu of the display block of the
         transaction request:</t>
 
         <figure>
           <artwork><![CDATA[{
 
-  client: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
+  display: "absc2948afgdkjnasdf9082ur3kjasdfasdf89"
 
 }]]></artwork>
         </figure>
@@ -954,7 +955,7 @@ MBDOFXG4Y5CVJCX821LH
         change at runtime.</t>
 
         <t>Key handles MAY be issued by the AS in response to a transaction
-        request. The AS SHOULD bind this handle to the client, resource, and
+        request. The AS SHOULD bind this handle to the display, resource, and
         user handles issued in the same response. When the RC receives this
         handle, it MAY present the handle in future transaction requests
         instead of sending its information again.</t>
@@ -976,7 +977,7 @@ MBDOFXG4Y5CVJCX821LH
 
         <t/>
 
-        <t>The RC sends its handle in lieu of the client block of the
+        <t>The RC sends its handle in lieu of the keys block of the
         transaction request:</t>
 
         <figure>
@@ -1145,6 +1146,9 @@ MBDOFXG4Y5CVJCX821LH
           <t>Removed "state" in favor of "nonce".</t>
 
           <t>Created signed return parameter for front channel return.</t>
+
+          <t>Changed "client" section to "display" section, as well as
+          associated handle.</t>
         </list></t>
 
       <t>- 02</t>
