@@ -831,9 +831,9 @@ MBDOFXG4Y5CVJCX821LH
           <t hangText="handle">REQUIRED. The (hash of?) transaction handle
           indicating which transaction to continue.</t>
 
-          <t hangText="interaction_handle">OPTIONAL. If the RC has received an
-          interaction handle from the callback response of the interaction
-          URL, the RC MUST include the (hash of?) that handle in its
+          <t hangText="interaction_ref">OPTIONAL. If the RC has received an
+          interaction reference from the callback response of the interaction
+          URL, the RC MUST include the (hash of?) that reference in its
           transaction continue request.</t>
         </list></t>
 
