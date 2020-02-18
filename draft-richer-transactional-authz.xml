@@ -10,7 +10,7 @@
 <?rfc inline="yes"?>
 <?rfc compact="yes"?>
 <?rfc subcompact="no"?>
-<rfc category="std" docName="draft-richer-transactional-authz-04"
+<rfc category="std" docName="draft-richer-transactional-authz-05"
      ipr="trust200902">
   <front>
     <title abbrev="transactional-authz">Transactional Authorization</title>
@@ -24,7 +24,7 @@
       </address>
     </author>
 
-    <date day="13" month="December" year="2019"/>
+    <date day="18" month="February" year="2020"/>
 
     <abstract>
       <t>This document defines a mechanism for delegating authorization to a
@@ -115,6 +115,13 @@
           <t hangText="user">Information about the RO as known to or provided
           to the RC, in the form of assertions or references to external data.
           This section is OPTIONAL.</t>
+
+          <t hangText="claims">Information about the RO as known to or
+          provided to the AS being requested by the RS. This section is
+          OPTIONAL.</t>
+
+          <t hangText="capabilities">Information about the capabilities of the
+          RC. This section is OPTIONAL.</t>
         </list></t>
 
       <t>Each section consists of either a JSON object or an array of JSON
@@ -172,6 +179,13 @@
     "display": {
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
+    },
+    "capabilities":
+        ["ext1", "ext2"],
+    "claims": {
+        "subject": true,
+        "email": true,
+        "oidc_id_token": true
     }
 }]]></artwork>
         </figure></t>
@@ -354,8 +368,8 @@
 
       <section anchor="key-request" title="Keys">
         <t>This section lists the keys that the RC can present proof of
-        ownership. The RC MUST send at least one key. The RC MAY send more
-        than one key format, but all keys MUST be equivalent.</t>
+        ownership. The RC MUST send at least one key format. The RC MAY send
+        more than one key format, but all keys MUST be equivalent.</t>
 
         <t><list style="hanging">
             <t hangText="proof">The form of proof that the RC will use when
@@ -408,6 +422,46 @@
         "did": "did:example:CV3BVVXK2PWWLCRQLRFU#xyz-1"
     }]]></artwork>
         </figure>
+      </section>
+
+      <section title="Capabilities">
+        <t>This section lists the extensions and special features supported by
+        the RC. Values of extensions MUST be listed in [[ a registry ]].</t>
+
+        <t><figure>
+            <artwork><![CDATA["capabilities": ["ext1", "ext2"]]]></artwork>
+          </figure></t>
+      </section>
+
+      <section title="Claims">
+        <t>This section allows the RC to request identity and authentication
+        information about the RO. All fields are OPTIONAL and consist of
+        boolean values. A "true" value indicates that the RC is requesting
+        that claim be returned in the transaction response. A "false" or
+        omitted value indicates that the RC is not requesting that claim be
+        returned.</t>
+
+        <t><list style="hanging">
+            <t hangText="subject">A subject identifier for the current
+            user.</t>
+
+            <t hangText="email">An email address for the current user.</t>
+
+            <t hangText="phone">A phone number for the current user.</t>
+
+            <t hangText="oidc_id_token">An OpenID Connect ID Token for the
+            current user.</t>
+          </list></t>
+
+        <t>The following non-normative example shows how to request the
+        subject and email address of the current user.</t>
+
+        <t><figure>
+            <artwork><![CDATA["claims": {
+    "subject": true,
+    "email": true
+}]]></artwork>
+          </figure></t>
       </section>
     </section>
 
@@ -579,7 +633,7 @@
         <t>Upon processing this request to the callback URL, the RC MUST
         calculate the expected value of the "hash" parameter as described in
         <xref target="interaction-hash"/> and compare that value to the "hash"
-        parameter on the incoming request. </t>
+        parameter on the incoming request.</t>
 
         <t>The RC also sends (the hash of? example here is not hashed) the
         interaction reference as the "interact_ref" field of the transaction
@@ -859,7 +913,7 @@ MBDOFXG4Y5CVJCX821LH
       inclined not to so that's been left out for now. ]]</t>
     </section>
 
-    <section anchor="token-response" title="Token response">
+    <section anchor="token-response" title="Transaction response">
       <t/>
 
       <t><list style="hanging">
@@ -871,6 +925,29 @@ MBDOFXG4Y5CVJCX821LH
           request<xref target="transaction-continue"/> to get a new access
           token once the one issued is no longer usable. See the section on
           transaction handles<xref target="transaction-handle"/>.</t>
+
+          <t hangText="claims">The set of claims that the AS asserts for the
+          current user. This field is returned only if the RC has requested
+          using the "claims" object. This object contains the following
+          OPTIONAL fields:<list style="hanging">
+              <t/>
+
+              <t hangText="updated_at">ISO-formatted timestamp string of when
+              the user's profile information was last updated. The RC SHOULD
+              compare this value to previous values when determining whether
+              to get additional user information from an external
+              endpoint.</t>
+
+              <t hangText="subject">The machine-readable unique subject
+              identifier of the user.</t>
+
+              <t hangText="email">The email address of the user.</t>
+
+              <t hangText="phone">The phone number of the user.</t>
+
+              <t hangText="oidc_id_token">An OpenID Connect ID Token
+              representing the user.</t>
+            </list></t>
         </list></t>
 
       <figure>
@@ -882,6 +959,10 @@ MBDOFXG4Y5CVJCX821LH
     "handle": {
         "value": "80UPRY5NM33OMUKMKSKU",
         "type": "bearer"
+    },
+    "claims": {
+        "subject": "UR64TB8N6BW7OZB8CDFONP-MHKUR6",
+        "email": "alice@example.com"
     }
 }]]></artwork>
       </figure>
@@ -899,6 +980,14 @@ MBDOFXG4Y5CVJCX821LH
         during the transaction request. A bound access token MUST be presented
         with proof of the key as described in <xref
         target="binding-keys"/>.</t>
+      </section>
+
+      <section title="Additional user information">
+        <t>Additional user information MAY be made available to the RC through
+        use of an access token at a protected resource representing the user.
+        This endpoint could be an OpenID Connect UserInfo Endpoint, a SCIM
+        endpoint, or another similar resource. Specification of this resource
+        is outside the scope of this specification.</t>
       </section>
     </section>
 
@@ -1370,6 +1459,14 @@ MBDOFXG4Y5CVJCX821LH
     </references>
 
     <section title="Document History">
+      <t>-05</t>
+
+      <t><list style="symbols">
+          <t>Added "claims" request and response for identity support.</t>
+
+          <t>Added "capabilities" request for inline discovery support.</t>
+        </list></t>
+
       <t>- 04</t>
 
       <t><list style="symbols">
