@@ -1016,10 +1016,14 @@ MBDOFXG4Y5CVJCX821LH
           in the user object that the client can use in a future request, as
           described in <xref target="user-handle"/>.</t>
 
-          <t hangText="display_handle">A value used to represent the
+          <t hangText="resource_handle">A value used to represent the
           information in the resource object that the client can use in a
           future request, as described in <xref
           target="resource-handle"/>.</t>
+
+          <t hangText="claims_handle">A value used to represent the
+          information in the claims object that the client can use in a future
+          request, as described in <xref target="claims-handle"/>.</t>
         </list></t>
 
       <t>The following example shows a single access token, a transaction
