@@ -10,7 +10,7 @@
 <?rfc inline="yes"?>
 <?rfc compact="yes"?>
 <?rfc subcompact="no"?>
-<rfc category="std" docName="draft-richer-transactional-authz-05"
+<rfc category="std" docName="draft-richer-transactional-authz-06"
      ipr="trust200902">
   <front>
     <title abbrev="transactional-authz">Transactional Authorization</title>
@@ -24,7 +24,7 @@
       </address>
     </author>
 
-    <date day="18" month="February" year="2020"/>
+    <date day="16" month="March" year="2020"/>
 
     <abstract>
       <t>This document defines a mechanism for delegating authorization to a
@@ -224,9 +224,10 @@
 
       <section anchor="resource-request" title="Resource">
         <t>This section identifies what the RC wants to do with the API hosted
-        at the RS. This section is a JSON array of objects, each object
-        representing a single resource or resource set. That AS MUST interpret
-        the request as being for all of the resources listed.</t>
+        at the RS. When requesting a single resource, this section is a JSON
+        array of objects, each object representing a single resource or
+        resource set. That AS MUST interpret the request as being for all of
+        the resources listed.</t>
 
         <t><list style="hanging">
             <t hangText="actions">The types of actions the RC will take at the
@@ -264,6 +265,54 @@
         <t>This can also be presented as a set of resource handle references
         <xref target="resource-handle"/>, or a combination of handles and
         resource structures.</t>
+
+        <t>When requesting multiple resources, this section is a JSON object
+        whose keys identifiers chosen by the RC and whose values are resource
+        description arrays, as described above.</t>
+
+        <figure>
+          <artwork><![CDATA[    "resources": {
+        "token1": [
+          {
+              "actions": [
+                  "read",
+                  "write",
+                  "dolphin"
+              ],
+              "locations": [
+                  "https://server.example.net/",
+                  "https://resource.local/other"
+              ],
+              "datatypes": [
+                  "metadata",
+                  "images"
+              ]
+          },
+          "dolphin-metadata"
+      ],
+      "token2": [
+            {
+                "actions": [
+                    "foo",
+                    "bar",
+                    "dolphin"
+                ],
+                "locations": [
+                    "https://resource.other/"
+                ],
+                "datatypes": [
+                    "data",
+                    "pictures"
+                ]
+            }
+        ]
+    }]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>When a client requests multiple resources in this manner, a
+        successful response MUST follow the multiple access token format.</t>
       </section>
 
       <section anchor="user-request" title="User">
@@ -433,7 +482,7 @@
           </figure></t>
       </section>
 
-      <section title="Claims">
+      <section anchor="claims-request" title="Claims">
         <t>This section allows the RC to request identity and authentication
         information about the RO. All fields are OPTIONAL and consist of
         boolean values. A "true" value indicates that the RC is requesting
@@ -919,7 +968,8 @@ MBDOFXG4Y5CVJCX821LH
       <t><list style="hanging">
           <t hangText="access_token">The access token that the RC uses to call
           the RS. The access token follows the handle structure described in
-          <xref target="handles"/>.</t>
+          <xref target="handles"/>. This field is mutually exclusive with the
+          multiple_access_tokens field.</t>
 
           <t hangText="handle">The transaction handle to use in the continue
           request<xref target="transaction-continue"/> to get a new access
@@ -930,8 +980,6 @@ MBDOFXG4Y5CVJCX821LH
           current user. This field is returned only if the RC has requested
           using the "claims" object. This object contains the following
           OPTIONAL fields:<list style="hanging">
-              <t/>
-
               <t hangText="updated_at">ISO-formatted timestamp string of when
               the user's profile information was last updated. The RC SHOULD
               compare this value to previous values when determining whether
@@ -948,7 +996,35 @@ MBDOFXG4Y5CVJCX821LH
               <t hangText="oidc_id_token">An OpenID Connect ID Token
               representing the user.</t>
             </list></t>
+
+          <t hangText="multiple_access_tokens">If the RC requested multiple
+          named resources, this structure contains the access tokens. The keys
+          of this JSON object are the labels determined by the RC in its
+          request, and the values are the same as a single access_token
+          response. This field is mutually exclusive with the access_token
+          field.</t>
+
+          <t hangText="display_handle">A value used to represent the
+          information in the display object that the client can use in a
+          future request, as described in <xref target="client-handle"/>.</t>
+
+          <t hangText="key_handle">A value used to represent the information
+          in the key object that the client can use in a future request, as
+          described in <xref target="key-handle"/>.</t>
+
+          <t hangText="user_handle">A value used to represent the information
+          in the user object that the client can use in a future request, as
+          described in <xref target="user-handle"/>.</t>
+
+          <t hangText="display_handle">A value used to represent the
+          information in the resource object that the client can use in a
+          future request, as described in <xref
+          target="resource-handle"/>.</t>
         </list></t>
+
+      <t>The following example shows a single access token, a transaction
+      handle, and a set of claims about the current user being returned in a
+      successful response.</t>
 
       <figure>
         <artwork><![CDATA[{
@@ -968,6 +1044,33 @@ MBDOFXG4Y5CVJCX821LH
       </figure>
 
       <t/>
+
+      <t>The following example shows multiple access tokens, a key handle, and
+      a user handle being returned in a successful response. The RC has chosen
+      the labels "token1" and "token2" in this response.</t>
+
+      <figure>
+        <artwork><![CDATA[{
+    "multiple_access_tokens": {
+        "token1": {
+            "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+            "type": "bearer"
+        },
+        "token2": {
+            "value": "UFGLO2FDAFG7VGZZPJ3IZEMN21EVU71FHCARP4J1",
+            "type": "bearer"
+        }
+    },
+    "user_handle": {
+        "value": "XUT2MFM1XBIKJKSDU8QM",
+        "type": "bearer"
+    },
+    "key_handle": {
+        "value": "7C7C4AZ9KHRS6X63AJAO",
+        "type": "bearer"
+    }
+}]]></artwork>
+      </figure>
 
       <section title="Presenting Tokens to the RS">
         <t>A bearer style access token MUST be presented using the Header
@@ -1004,8 +1107,8 @@ MBDOFXG4Y5CVJCX821LH
       <t><list style="hanging">
           <t hangText="value">The value of the handle as a string.</t>
 
-          <t hangText="method">The verification method, MUST be one of
-          "bearer" or "sha3".</t>
+          <t hangText="type">The verification method, MUST be one of "bearer"
+          or "sha3".</t>
         </list></t>
 
       <section anchor="presenting-handles" title="Presenting handles">
@@ -1102,7 +1205,7 @@ MBDOFXG4Y5CVJCX821LH
 
         <t>Resource handles MAY be issued by the RS in response to a
         transaction request. In such cases, the resource handle returned
-        represents the total of all resources</t>
+        represents the total of all resources represented in the request.</t>
 
         <figure>
           <artwork><![CDATA[{
@@ -1161,6 +1264,9 @@ MBDOFXG4Y5CVJCX821LH
         </figure>
 
         <t/>
+
+        <t>If the RC requests multiple named resources to result in multiple
+        access tokens, the AS MUST NOT return a resource handle.</t>
 
         <section title="Resource-first">
           <t>[[ Strawman idea: ]]</t>
@@ -1254,6 +1360,52 @@ MBDOFXG4Y5CVJCX821LH
           <artwork><![CDATA[{
 
   "keys": "7C7C4AZ9KHRS6X63AJAO"
+
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>When the AS receives a key handle, it MUST validate that the keys
+        referenced by the handle are bound to the current transaction request
+        using the proof method referenced by the handle.</t>
+      </section>
+
+      <section anchor="claims-handle" title="Claims handles">
+        <t>Claims handles stand in for the claims section of the initial
+        transaction request<xref target="claims-request"/>. Claims handles MAY
+        be created by the authorization server as static stand-ins for
+        specific claim set requests, analogous to OIDC scopes.</t>
+
+        <t>Claims handles MAY be issued by the RS in response to a transaction
+        request. In such cases, the resource handle returned represents the
+        total of all claims requested in the transaction request. When the RC
+        receives this handle, it MAY present the handle in future transaction
+        requests instead of sending the claims information again.</t>
+
+        <figure>
+          <artwork><![CDATA[{
+    "wait": 30,
+    "handle": {
+        "value": "80UPRY5NM33OMUKMKSKU",
+        "type": "bearer"
+    },
+    "claim_handle": {
+        "value": "14XF3WKRPKW4RN9AROOC",
+        "type": "bearer"
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The RC sends its handle in lieu of the claims block of the
+        transaction request:</t>
+
+        <figure>
+          <artwork><![CDATA[{
+
+  "claims": "14XF3WKRPKW4RN9AROOC"
 
 }]]></artwork>
         </figure>
@@ -1459,6 +1611,13 @@ MBDOFXG4Y5CVJCX821LH
     </references>
 
     <section title="Document History">
+      <t>-06</t>
+
+      <t><list style="symbols">
+          <t>Added multiple resource requests and multiple access token
+          response.</t>
+        </list></t>
+
       <t>-05</t>
 
       <t><list style="symbols">
