@@ -10,7 +10,7 @@
 <?rfc inline="yes"?>
 <?rfc compact="yes"?>
 <?rfc subcompact="no"?>
-<rfc category="std" docName="draft-richer-transactional-authz-06"
+<rfc category="std" docName="draft-richer-transactional-authz-08"
      ipr="trust200902">
   <front>
     <title abbrev="transactional-authz">Transactional Authorization</title>
@@ -24,7 +24,7 @@
       </address>
     </author>
 
-    <date day="16" month="March" year="2020"/>
+    <date day="22" month="April" year="2020"/>
 
     <abstract>
       <t>This document defines a mechanism for delegating authorization to a
@@ -89,8 +89,9 @@
     <section anchor="transaction-request" title="Transaction request">
       <t>To start a transaction, the RC makes a transaction request to the
       transaction endpoint of the AS. The RC creates a JSON <xref
-      target="RFC8259"/> document with five primary sections, included as
-      members of a root JSON object.</t>
+      target="RFC8259"/> document with different sections, included as members
+      of a root JSON object. Contents of this section are defined by a
+      registry [TBD].</t>
 
       <t><list style="hanging">
           <t hangText="resources">Information about the RS's the resulting
@@ -98,7 +99,7 @@
           types of data being accessed, and other API information. This
           section is REQUIRED.</t>
 
-          <t hangText="keys">Information about the keys known to the RC and
+          <t hangText="key">Information about the keys known to the RC and
           able to be presented in future parts of the transaction. This
           section is REQUIRED. (Note: I can't think of a good reason for this
           to be optional.)</t>
@@ -190,12 +191,17 @@
 }]]></artwork>
         </figure></t>
 
+      <t>The request MUST be sent as a JSON obect with content type <spanx
+      style="verb">application/json</spanx>, unless otherwise specified by the
+      signature mechanism.</t>
+
       <section anchor="client-request" title="Display">
         <t>This section provides descriptive details of the RC software making
         the call, useful for displaying information about the client to the
         user during the authorization request. This section is a JSON object,
         and all fields are OPTIONAL. The RC MAY send additional fields, and
-        the AS MUST ignore all fields that it does not understand.</t>
+        the AS MUST ignore all fields that it does not understand. The fields
+        of this section will be determined by a registry [TBD].</t>
 
         <t><list style="hanging">
             <t hangText="name">Display name of the RC software</t>
@@ -227,7 +233,8 @@
         at the RS. When requesting a single resource, this section is a JSON
         array of objects, each object representing a single resource or
         resource set. That AS MUST interpret the request as being for all of
-        the resources listed.</t>
+        the resources listed. The fields in this section will be controlled by
+        a registry [TBD].</t>
 
         <t><list style="hanging">
             <t hangText="actions">The types of actions the RC will take at the
@@ -318,7 +325,8 @@
       <section anchor="user-request" title="User">
         <t>This section provides a verifiable assertion about the person
         interacting with the RC on behalf of the request. This person MAY be
-        the RO or MAY be another party.</t>
+        the RO or MAY be another party. The assertion types will be defined in
+        a registry [TBD].</t>
 
         <t><list style="hanging">
             <t hangText="assertion">The value of the assertion as a
@@ -344,8 +352,9 @@
       <section anchor="interact-request" title="Interact">
         <t>This section provides details of how the RC can interact with the
         RO. All fields are OPTIONAL, and the RC MAY include multiple possible
-        interaction modes. If a field is not present, it is interpreted as
-        negative support for that feature.</t>
+        interaction modes. If a field is not present, it is interpreted as the
+        client's lack support for that feature. The fields in this section are
+        defined by a registry [TBD].</t>
 
         <t><list style="hanging">
             <t hangText="callback">If this object is present, it indicates the
@@ -418,7 +427,8 @@
       <section anchor="key-request" title="Keys">
         <t>This section lists the keys that the RC can present proof of
         ownership. The RC MUST send at least one key format. The RC MAY send
-        more than one key format, but all keys MUST be equivalent.</t>
+        more than one key format, but all keys MUST be equivalent. The types
+        of keys in this section will be defined by a registry [TBD].</t>
 
         <t><list style="hanging">
             <t hangText="proof">The form of proof that the RC will use when
@@ -473,13 +483,17 @@
         </figure>
       </section>
 
-      <section title="Capabilities">
+      <section anchor="capabilities-request" title="Capabilities">
         <t>This section lists the extensions and special features supported by
         the RC. Values of extensions MUST be listed in [[ a registry ]].</t>
 
         <t><figure>
             <artwork><![CDATA["capabilities": ["ext1", "ext2"]]]></artwork>
           </figure></t>
+
+        <t>When responding to a request including this field, the AS MAY
+        return its own list of supported capabilites. The AS MUST NOT return
+        any capability value that the RC did not send in its request.</t>
       </section>
 
       <section anchor="claims-request" title="Claims">
@@ -488,7 +502,8 @@
         boolean values. A "true" value indicates that the RC is requesting
         that claim be returned in the transaction response. A "false" or
         omitted value indicates that the RC is not requesting that claim be
-        returned.</t>
+        returned. The kinds of claims in this section will be defined by a
+        registry [TBD].</t>
 
         <t><list style="hanging">
             <t hangText="subject">A subject identifier for the current
@@ -524,9 +539,10 @@
 
       <t>The AS responds to the RC based on the type of interaction supported
       by the RC in the transaction request. The AS MAY respond with multiple
-      possible interaction methods to be chosen by the RC. For example, if the
-      RC indicates that it can handle redirects and user codes and has a
-      callback URI, it would send a transaction request like this:</t>
+      possible interaction methods to be chosen by the RC. The fields in this
+      response are determined by a registry [TBD]. For example, if the RC
+      indicates that it can handle redirects and user codes and has a callback
+      URI, it would send a transaction request like this:</t>
 
       <t><figure>
           <artwork><![CDATA[{
@@ -898,8 +914,8 @@ MBDOFXG4Y5CVJCX821LH
 
       <t/>
 
-      <t>TODO: we should have a more robust error mechanism. Current candidate
-      list of errors:</t>
+      <t>TODO: we should have a more robust error mechanism and controlled by
+      a registry [TBD]. Current candidate list of errors:</t>
 
       <t><list style="hanging">
           <t hangText="user_denied">The RO denied the transaction request.</t>
@@ -954,6 +970,10 @@ MBDOFXG4Y5CVJCX821LH
       request<xref target="key-request"/> as described in <xref
       target="binding-keys"/>.</t>
 
+      <t>The request MUST be sent as a JSON object with content type <spanx
+      style="verb">application/json</spanx>, unless specified otherwise by the
+      signature mechanism.</t>
+
       <t>[[ Note: should we allow the client to mutate the transaction at this
       point? We already allow the presentation of the interaction handle, and
       any messaging protocols like DIDComm would allow additional work to be
@@ -963,7 +983,9 @@ MBDOFXG4Y5CVJCX821LH
     </section>
 
     <section anchor="token-response" title="Transaction response">
-      <t/>
+      <t>The transaction response contains a set of fields returned as a JSON
+      object. The fields of the transaction response will be controlled by a
+      registry [TBD].</t>
 
       <t><list style="hanging">
           <t hangText="access_token">The access token that the RC uses to call
@@ -979,7 +1001,8 @@ MBDOFXG4Y5CVJCX821LH
           <t hangText="claims">The set of claims that the AS asserts for the
           current user. This field is returned only if the RC has requested
           using the "claims" object. This object contains the following
-          OPTIONAL fields:<list style="hanging">
+          OPTIONAL fields (the list of available fields will be determined by
+          a registry [TBD]):<list style="hanging">
               <t hangText="updated_at">ISO-formatted timestamp string of when
               the user's profile information was last updated. The RC SHOULD
               compare this value to previous values when determining whether
@@ -1432,6 +1455,8 @@ MBDOFXG4Y5CVJCX821LH
       <t><list style="hanging">
           <t hangText="jwsd">A detached JWS signature header</t>
 
+          <t hangText="jws">Attached JWS payload</t>
+
           <t hangText="mtls">Mutual TLS certificate verification</t>
 
           <t hangText="dpop">OAuth DPoP key proof header</t>
@@ -1441,7 +1466,7 @@ MBDOFXG4Y5CVJCX821LH
           <t hangText="oauthpop">OAuth PoP key proof authentication header</t>
         </list></t>
 
-      <t>Additional values can be defined by a registry.</t>
+      <t>Additional values can be defined by a registry [TBD].</t>
 
       <t>All keys presented by the RC in the transaction request<xref
       target="transaction-request"/> MUST be proved in all transaction
@@ -1473,6 +1498,22 @@ MBDOFXG4Y5CVJCX821LH
         contents as a detached JWS object. The HTTP Body is used as the
         payload for purposes of validating the JWS, with no
         transformations.</t>
+      </section>
+
+      <section title="Attached JWS">
+        <t>This method is indicated by <spanx style="verb">jws</spanx> in the
+        <spanx style="verb">proof</spanx> field of a key request. To sign a
+        request to the transaction endpoint, the RC takes the serialized body
+        of the request JSON and signs it using JWS <xref target="RFC7515"/>.
+        The header of the JWS MUST contain the kid field of the key bound to
+        this RC during this transaction. The JWS header MUST contain an alg
+        field appropriate for the key identified by kid and MUST NOT be
+        none.</t>
+
+        <t>The RC presents the JWS as the body of the request along with a
+        content type of <spanx style="verb">application/jose</spanx>. The AS
+        MUST extract the payload of the JWS and treat it as the request body
+        for further processing.</t>
       </section>
 
       <section anchor="mtls" title="Mutual TLS">
@@ -1517,6 +1558,51 @@ MBDOFXG4Y5CVJCX821LH
       </section>
     </section>
 
+    <section title="Discovery">
+      <t>By design, the protocol minimizes the need for any pre-flight
+      discovery. To begin a transaction, the RC only needs to know the
+      transaction endpoint of the AS, and everything else can be negotiated
+      dynamically. If the RC wants to optimize its calls to the AS, it MAY
+      send an HTTP OPTIONS request to the transaction endpoint to retrieve the
+      server's discovery information. The AS responds with a JSON document
+      containing the following information:</t>
+
+      <t><list style="hanging">
+          <t hangText="transaction_endpoint">REQUIRED. The full URL of the
+          AS's transaction endpoint. This MUST match the URL the RC used to
+          make the discovery request.</t>
+
+          <t hangText="capabilities">OPTIONAL. A list of the AS's
+          capabilities. The values of this result MAY be used by the RC in the
+          <xref target="capabilities-request">capabilities section</xref> of
+          the transaction request.</t>
+
+          <t hangText="interaction_methods">OPTIONAL. A list of the AS's
+          interaction methods. The values of this list correspond to the
+          possible fields in the i<xref target="interact-request">nteraction
+          section</xref> of the transaction request.</t>
+
+          <t hangText="key_proofs">OPTIONAL. A list of the AS's supported key
+          proofing mechanisms. The values of this list correspond to possible
+          values of the <spanx style="verb">proof</spanx> field of the <xref
+          target="key-request">key section</xref> of the transaction
+          request.</t>
+
+          <t hangText="claims">OPTIONAL. A list of the AS's supported claims.
+          The values of this list correspond to possible values of the <xref
+          target="claims-request">claim section</xref> of the transaction
+          request.</t>
+        </list></t>
+
+      <t>The information returned from this method is for optimization
+      purposes only. The AS MAY deny any request, or any portion of a request,
+      even if it lists a capability as supported. For example, a given client
+      can be registered with the <spanx style="verb">mtls</spanx> key proofing
+      mechanism, but the AS also returns other proofing methods, then the AS
+      will deny a request from that client using a different proofing
+      mechanism.</t>
+    </section>
+
     <section anchor="Acknowledgements" title="Acknowledgements">
       <t/>
     </section>
@@ -1545,6 +1631,8 @@ MBDOFXG4Y5CVJCX821LH
       <?rfc include='reference.RFC.2119.xml'?>
 
       <?rfc include='reference.RFC.3230.xml'?>
+
+      <?rfc include='reference.RFC.7515.xml'?>
 
       <?rfc include='reference.RFC.7519.xml'?>
 
@@ -1615,6 +1703,20 @@ MBDOFXG4Y5CVJCX821LH
     </references>
 
     <section title="Document History">
+      <t>-08</t>
+
+      <t><list style="symbols">
+          <t>Added attached JWS signature method.</t>
+
+          <t>Added discovery methods.</t>
+        </list></t>
+
+      <t>-07</t>
+
+      <t><list style="symbols">
+          <t>Marked sections as being controlled by a future registry TBD.</t>
+        </list></t>
+
       <t>-06</t>
 
       <t><list style="symbols">
