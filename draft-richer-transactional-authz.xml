@@ -49,11 +49,13 @@
     <section title="Protocol">
       <t>This protocol allows a piece of software to request delegated
       authorization to an API, protected by an authorization server usually on
-      behalf of a resource owner.</t>
+      behalf of a resource owner. The user operating the software may interact
+      with the authorization server to authenticate, provide consent, and
+      authorize the request.</t>
 
       <section title="Parties">
         <t>The Authorization Server (AS) manages the transactions. It is
-        defined by its transaction endpoint, a single URL that accepts a POST
+        defined by its grant endpoint, a single URL that accepts a POST
         request with a JSON payload. The AS MAY also have other endpoints,
         including interaction endpoints and user code endpoints, and these are
         introduced to the RC as needed during the transaction process.</t>
@@ -74,18 +76,19 @@
         <t>The RC requests access to an RS, and the AS determines that it
         needs to interact with the user directly to get the RO's consent:<list
             style="numbers">
-            <t>The RC creates a grant request and sends it to the AS <xref
-            target="request"/></t>
+            <t>The RC <xref target="request">creates a grant request and sends
+            it to the AS</xref></t>
 
-            <t>The AS processes the grant request and determines if the RO
-            needs to interact <xref target="response"/></t>
+            <t>The AS <xref target="response">processes the grant request and
+            determines if the RO needs to interact and sends its
+            response</xref></t>
 
-            <t>If interaction is required, the AS interacts with the RO,
-            possibly by directing the RC to send the RO there <xref
-            target="user-interaction"/></t>
+            <t>If interaction is required, the <xref
+            target="user-interaction">AS interacts with the RO</xref>,
+            possibly by directing the RC to send the RO there </t>
 
-            <t>The RC continues the grant at the AS <xref
-            target="continue-request"/></t>
+            <t>The RC <xref target="continue-request">continues the grant at
+            the AS</xref></t>
 
             <t>The AS processes the transaction again, determining that a
             token can be issued</t>
@@ -101,9 +104,10 @@
     </section>
 
     <section anchor="request" title="Requesting Access">
-      <t>To start a request, the client sends JSON <xref target="RFC8259"/>
-      document with an object as its root. Each member of the request object
-      represents a different aspect of the client's request. </t>
+      <t>To start a request, the client sends <xref
+      target="RFC8259">JSON</xref> document with an object as its root. Each
+      member of the request object represents a different aspect of the
+      client's request.</t>
 
       <t>A non-normative example of a grant request is below:</t>
 
@@ -177,7 +181,7 @@
           the access token. The requested access is the sum of all elements
           within the array. These request elements MAY be sent by value as an
           object or by reference as a string. A single resources array MAY
-          contain both object and string type resource requests. </t>
+          contain both object and string type resource requests.</t>
 
           <t>The client declares what access it wants to associated with the
           resulting access token using objects that describe multiple
@@ -189,7 +193,7 @@
           common properties are defined here. Specific API implementations
           SHOULD NOT re-use these fields with different semantics or syntax.
           [[ Editor's note: this will align with OAuth 2 RAR, but the details
-          of how it aligns are TBD ]]. </t>
+          of how it aligns are TBD ]].</t>
 
           <t><list style="hanging">
               <t hangText="actions">The types of actions the RC will take at
@@ -250,9 +254,9 @@
           expansion would work. For example, expand into an object where the
           value of the "type" field is the value of the string. Or we could
           leave it open and flexible, since it's really up to the AS/RS to
-          interpret. ]] This value MAY be any valid JSON string, and therefore
-          MAY include spaces, unicode characters, and properly escaped string
-          sequences.</t>
+          interpret. ]] This value is opaque to the client and MAY be any
+          valid JSON string, and therefore could include spaces, unicode
+          characters, and properly escaped string sequences.</t>
 
           <figure>
             <artwork><![CDATA[    "resources": [
@@ -304,8 +308,9 @@
           a JSON object. The names of the JSON object elements are token
           identifiers chosen by the client, and MAY be any valid string. The
           values of the JSON object are JSON arrays representing a single
-          access token request, as specified in [requesting a single access
-          token].</t>
+          access token request, as specified in <xref
+          target="response-token-single">requesting a single access
+          token</xref>.</t>
 
           <t>The following non-normative example shows a request for two
           separate access tokens, token1 and token2.</t>
@@ -357,12 +362,12 @@
         <t>If the client is requesting information about the current user from
         the AS, it sends a subject element as a JSON object. This object MAY
         contain the following fields (or additional fields defined in [[
-        registry TBD ]]). </t>
+        registry TBD ]]).</t>
 
         <t><list style="hanging">
             <t hangText="sub-ids">An array of subject identifier subject types
-            requested for the user, as defined by [[
-            draft-ietf-secevent-subject-identifier ]].</t>
+            requested for the user, as defined by <xref
+            target="I-D.ietf-secevent-subject-identifiers"/>.</t>
 
             <t hangText="assertions">An array of requested assertion formats
             defined by [[ registry TBD ]].</t>
@@ -379,8 +384,8 @@
 
         <t>If the AS knows the identifier for the current user and has
         permission to do so [[ editor's note: from the user's consent or a
-        policy or ... ]], the AS MAY return the user's information in its
-        response [user information response].</t>
+        policy or ... ]], the AS MAY <xref target="response-subject">return
+        the user's information in its response</xref>.</t>
 
         <t>The "sub-ids" and "assertions" request fields are independent of
         each other, and a returned assertion MAY omit a requested subject
@@ -391,8 +396,8 @@
       <section anchor="request-key" title="Identifying the Client">
         <t>When sending an initial request to the AS, the client MUST identify
         itself by including the key field in the request and by signing the
-        request as described in [key binding]. This key MAY be sent by value
-        or by reference.</t>
+        request as described in <xref target="binding-keys"/>. This key MAY be
+        sent by value or by reference.</t>
 
         <t>When sent by value, the key MUST be a public key in at least one
         supported format and MUST contain a proof property that matches the
@@ -420,7 +425,10 @@
           </list></t>
 
         <t>Additional key types are defined in [[ registry TBD ]]. Proof types
-        are defined in a [[ registry TBD ]].</t>
+        are defined in a [[ registry TBD ]] and described in <xref
+        target="binding-keys"/>. [[ Editor's note: we will eventually want to
+        have fetchable keys, I would guess. Things like DID for key
+        identification are going to be important. ]]</t>
 
         <t>This non-normative example shows a single key presented in multiple
         formats using a single proofing mechanism.</t>
@@ -428,19 +436,14 @@
         <figure>
           <artwork><![CDATA[    "key": {
         "proof": "http-message-sig",
-        "jwks": {
-            "keys": [
-                {
+        "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
                     "kid": "xyz-1",
                     "alg": "RS256",
                     "n": "kOB5rR4Jv0GMeLaY6_It_r3ORwdf8ci_JtffXyaSx8xY..."
-                }
-            ]
         },
-        "cert": "MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFA...",
-        "did": "did:example:CV3BVVXK2PWWLCRQLRFU#xyz-1"
+        "cert": "MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFA..."
     }]]></artwork>
         </figure>
 
@@ -451,7 +454,8 @@
         which interaciton methods can be used.</t>
 
         <t>If the client has a reference for its key, the client MAY send that
-        reference handle as a string.</t>
+        reference handle as a string. The format of this string is opaque to
+        the client.</t>
 
         <figure>
           <artwork><![CDATA[{
@@ -461,8 +465,13 @@
 
         <t/>
 
+        <t>If the client identifies its key by reference, the referenced key
+        MAY be a symmetric key known to the AS. The client MUST NOT send a
+        symmetric key by value.</t>
+
         <t>The AS MUST ensure that the key represented by this reference is
-        the same key used to sign the request. </t>
+        the same key used to sign the request as described in <xref
+        target="binding-keys"/>.</t>
       </section>
 
       <section anchor="request-user" title="Identifying the User">
@@ -473,8 +482,8 @@
 
         <t><list style="hanging">
             <t hangText="sub-ids">An array of subject identifiers for the
-            user, as defined by [[ draft-ietf-secevent-subject-identifier
-            ]].</t>
+            user, as defined by <xref
+            target="I-D.ietf-secevent-subject-identifiers"/>.</t>
 
             <t hangText="assertions">An object containing assertions as values
             keyed on the assertion type defined by [[ registry TBD ]]. [[
@@ -487,7 +496,7 @@
           <artwork><![CDATA["user": {
    "sub-ids": [ {
      "subject_type": "email",
-     "email": "user@example.com",
+     "email": "user@example.com"
    } ],
    "assertions": {
      "oidc-id-token": "eyj..."
@@ -498,10 +507,10 @@
         <t/>
 
         <t>Subject identifiers are hints to the AS in determining the current
-        user and MUST NOT be taken as declarative statements apart from
-        additional proof. Assertions SHOULD be validated by the AS. [[
-        editor's note: assertion validation is extremely specific to the kind
-        of assertion in place ]]</t>
+        user and MUST NOT be taken as declarative statements that a particular
+        user is present at the client. Assertions SHOULD be validated by the
+        AS. [[ editor's note: assertion validation is extremely specific to
+        the kind of assertion in place ]]</t>
 
         <t>If the identified user does not match the user present at the AS
         during an interaction step, the AS SHOULD reject the request. [[
@@ -510,10 +519,11 @@
         the same structure, so perhaps these should be split. ]]</t>
 
         <t>Additional user assertion formats are defined in [[ registry TBD --
-        probably the same registry as above ]].</t>
+        probably the same registry as requesting formats ]].</t>
 
         <t>If the client has a reference for the current user at this AS, the
-        client MAY pass that reference as a string.</t>
+        client MAY pass that reference as a string. The format of this string
+        is opaque to the client.</t>
 
         <figure>
           <artwork><![CDATA["user": "XUT2MFM1XBIKJKSDU8QM"
@@ -523,7 +533,8 @@
         <t/>
 
         <t>If the AS trusts the client to present user information, it MAY
-        decide, based on its policy, to skip interaction with the user. </t>
+        decide, based on its policy, to skip interaction with the user, even
+        if the client provides one or more interaction capabilities.</t>
       </section>
 
       <section anchor="request-interact" title="Interacting with the User">
@@ -531,20 +542,21 @@
         client MAY declare the means that it can interact using the "interact"
         field. This field is a JSON object with keys that declare different
         interaction capabilities. A client MUST NOT declare an interaciton
-        capability it does not support. </t>
+        capability it does not support.</t>
 
         <t>The client MAY send multiple capabilities in the same request.
         There is no preference order specified in this request. An AS MAY
         respond to any, all, or none of the presented interaction capabilities
-        in a request. </t>
+        in a request.</t>
 
         <t>The following sections detail requests for interaction
         capabilities. Additional interaction capabilities are defined in [[ a
         registry TBD ]].</t>
 
         <t>[[ Editor's note: there need to be more examples that knit together
-        the capabilities into common flows, like an authz-code equivalent.
-        ]]</t>
+        the interaction capabilities into common flows, like an authz-code
+        equivalent. But it's important for the protocol design that these are
+        separate pieces. ]]</t>
 
         <figure>
           <artwork><![CDATA[    "interact": {
@@ -577,7 +589,8 @@
           <t/>
 
           <t>If this interaciton capability is supported for this client and
-          request, the AS returns a [ redirect interaciton response ].</t>
+          request, the AS returns a redirect interaciton response <xref
+          target="response-interact-redirect"/>.</t>
         </section>
 
         <section anchor="request-interact-short"
@@ -599,8 +612,8 @@
           <t/>
 
           <t>If this interaction capability is supported for this client and
-          request, the AS returns a [ redirect interaction response with short
-          URL ].</t>
+          request, the AS returns a redirect interaction response with short
+          URL <xref target="response-interact-short"/>.</t>
 
           <t>[[ Editor's note: I'm not sold on this structure as there's a lot
           of overlap with the "redirect" capability, so maybe these should
@@ -625,13 +638,15 @@
           <t/>
 
           <t>If this interaction capability is supported for this client and
-          request, the AS returns an [ app interaction response with an app
-          URL payload ].</t>
+          request, the AS returns an app interaction response with an app URL
+          payload <xref target="response-interact-app"/>.</t>
 
           <t>[[ Editor's note: this is also similar to the "redirect" above
           today as most apps use captured URLs, but there is likely an
           appetite for splitting the web-based interaction and app-based
-          interaction into different URIs. ]]</t>
+          interaction into different URIs. There's also the possibility of
+          wanting more in the payload than can be reasonably put into the URL.
+          ]]</t>
         </section>
 
         <section anchor="request-interact-callback"
@@ -661,8 +676,8 @@
               MUST be generated by the RC as a unique value for this
               request.</t>
 
-              <t hangText="hash_method">OPTIONAL. The signature mechanism to
-              be used for the callback hash in <xref
+              <t hangText="hash_method">OPTIONAL. The hash calculation
+              mechanism to be used for the callback hash in <xref
               target="interaction-hash"/>. Can be one of sha3 or sha2. If
               absent, the default value is sha3. [[ Editor's note: This should
               be expandable via a registry of cryptographic options, and it
@@ -682,11 +697,12 @@
           <t/>
 
           <t>If this interaction capability is supported for this client and
-          request, the AS returns [[ a nonce for use in validating the
-          callback response ]]. Requests to the callback URI MUST be processed
-          as described in [[ processing interaction callbacks ]], and the AS
-          MUST require presentation of an interaction callback reference as
-          described in [ interaction callback references ].</t>
+          request, the AS returns a nonce for use in validating <xref
+          target="response-interact-callback">the callback response</xref>.
+          Requests to the callback URI MUST be processed as described in [[
+          processing interaction callbacks ]], and the AS MUST require
+          presentation of an interaction callback reference as described in
+          <xref target="interaction-callback"/>.</t>
 
           <t>Since the incoming request to the callback URL is from the user's
           browser, the client MUST require the user to be present on the
@@ -740,11 +756,12 @@
           <t/>
 
           <t>If this interaction capability is supported for this client and
-          request, the AS returns [[ a nonce for use in validating the
-          pushback response ]]. Requests to the pushback URI MUST be processed
-          as described in [[ processing interaction pushbacks ]], and the AS
-          MUST require presentation of an interaction callback reference as
-          described in [ interaction callback references ].</t>
+          request, the AS returns a nonce for use in validating <xref
+          target="response-interact-pushback">the pushback response</xref>.
+          Requests to the pushback URI MUST be processed as described in <xref
+          target="interaction-pushback"/>, and the AS MUST require
+          presentation of an interaction callback reference as described in [
+          interaction callback references ].</t>
 
           <t>Since the incoming request to the pushback URL is from the AS and
           not from the user's browser, the client MUST NOT require the user to
@@ -773,13 +790,13 @@
 
           <t>If this interaction capability is supported for this client and
           request, the AS returns a user code and interaction URL as specified
-          in [ user code interaction response ].</t>
+          in <xref target="interaction-usercode"/>.</t>
         </section>
 
         <section anchor="request-interact-extend"
                  title="Extending Interaction Capabilities">
           <t>Additional interaction capabilities are defined in [[ a registry
-          TBD ]]. </t>
+          TBD ]].</t>
 
           <t>[[ Editor's note: we should have guidance in here about how to
           define other interaction capabilities. There's already interest in
@@ -851,7 +868,7 @@
         <t/>
 
         <t>The AS MUST dereference the grant associated with the reference and
-        process this request in the context of the referenced one. </t>
+        process this request in the context of the referenced one.</t>
 
         <t>[[ Editor's note: this basic capability is to allow for both
         step-up authorization and downscoped authorization, but by explicitly
@@ -862,7 +879,7 @@
       <section anchor="request-extending" title="Extending The Grant Request">
         <t>The request object MAY be extended by registering new items in [[ a
         registry TBD ]]. Extensions SHOULD be orthogonal to other parameters.
-        Extensions MUST document any aspects where the </t>
+        Extensions MUST document any aspects where the</t>
 
         <t>[[ Editor's note: we should have more guidance and examples on what
         possible top-level extensions would look like. Things like an OIDC
@@ -872,7 +889,7 @@
 
     <section anchor="response" title="Grant Response">
       <t>In response to a client's request, the AS responds with a JSON object
-      as the HTTP entity body. </t>
+      as the HTTP entity body.</t>
 
       <figure>
         <artwork><![CDATA[{
@@ -929,10 +946,12 @@
 
         <t/>
 
-        <t>The client can use the values of this field as described in [
-        continuing an active request ].</t>
+        <t>The client can use the values of this field as described in <xref
+        target="continue-request"/>.</t>
 
-        <t>This field SHOULD be returned when interaction is expected.</t>
+        <t>This field SHOULD be returned when interaction is expected, to
+        allow the client to follow up after interaction has been
+        concluded.</t>
       </section>
 
       <section anchor="response-token" title="Access Tokens">
@@ -959,30 +978,36 @@
 
               <t hangText="proof">REQUIRED. The proofing presentation
               mechanism used for presenting this access token to an RS. See
-              the section on [ sending access tokens ] for details on possible
-              values to this field and their requirements.</t>
+              <xref target="send-access-token">the section on sending access
+              tokens</xref> for details on possible values to this field and
+              their requirements.</t>
 
               <t hangText="manage">OPTIONAL. The management URI for this
               access token. If provided, the client MAY manage its access
-              token as described in [ managing an access token lifecycle ].
-              This URI MUST NOT include the access token value and MUST be
-              different for each access token.</t>
+              token as described in <xref target="token-management">managing
+              an access token lifecycle</xref>. This URI MUST NOT include the
+              access token value and MUST be different for each access
+              token.</t>
 
               <t hangText="resources">OPTIONAL. A description of the rights
-              associated with this access token, as defined in [ requesting
-              resource access ]. If included, this MUST reflect the rights
+              associated with this access token, as defined in <xref
+              target="response-token-single">requesting resource
+              access</xref>. If included, this MUST reflect the rights
               associated with the issued access token. These rights MAY vary
               from what was requested by the client.</t>
 
               <t hangText="expires_in">OPTIONAL. The number of seconds in
-              which the access will expire. The client MUST NOT use the handle
-              past this time. The handle MAY be revoked at any point prior to
-              its expiration.</t>
+              which the access will expire. The client MUST NOT use the access
+              token past this time. The access token MAY be revoked at any
+              point prior to its expiration.</t>
 
               <t hangText="key">The key that the token is bound to, REQUIRED
-              if the token is sender-constrained. See the section on [ sending
-              access tokens ] for details on possible values to this field and
-              their requirements.</t>
+              if the token is sender-constrained. The key MUST be in a format
+              described in <xref target="request-key"/>. [[ Editor's note:
+              this isn't quite right, since the request section includes a
+              "proof" field that we already have here. A possible solution
+              would be to only have a "key" field as defined above and its
+              absence indicates a bearer token? ]]</t>
             </list></t>
 
           <figure>
@@ -1021,9 +1046,10 @@
           granted at least one of them, the AS responds with the
           "multiple_access_tokens" field. The value of this field is a JSON
           object, and the property names correspond to the token identifiers
-          chosen by the client in the [multiple access token request]. The
-          values of the properties of this object are access tokens as
-          descibed in [ single access token ]. </t>
+          chosen by the client in the <xref
+          target="request-resource-multiple">multiple access token request
+          </xref>. The values of the properties of this object are access
+          tokens as descibed in <xref target="response-token-single"/>.</t>
 
           <figure>
             <artwork><![CDATA[    "multiple_access_tokens": {
@@ -1042,14 +1068,15 @@
           <t/>
 
           <t>Each access token corresponds to the named resources arrays in
-          the client's request. The AS MAY choose to not issue one or more of
-          the requested access tokens, in such cases all of the issued access
+          the client's request. The AS MAY not issue one or more of the
+          requested access tokens. In such cases all of the issued access
           tokens are included without the omitted token. The multiple access
-          token response MUST be used even if only one access token is
-          issued.</t>
+          token response MUST be used when multiple access tokens are
+          requested, even if only one access token is issued.</t>
 
-          <t>If the client requested a single access token, the AS MUST NOT
-          respond with multiple access tokens. </t>
+          <t>If the client <xref target="request-resource-single">requested a
+          single access token</xref>, the AS MUST NOT respond with multiple
+          access tokens.</t>
 
           <t>Each access token MAY have different proofing mechanisms. If
           used, each access token MUST have different management URIs.</t>
@@ -1070,11 +1097,12 @@
 
         <section anchor="response-interact-redirect"
                  title="Redirection to an arbitrary URL">
-          <t>If the client indicates that it can redirect to an arbitrary URL
-          and the AS supports this capability for the client's request, the AS
-          responds with the "interaction_url" field, which is a string
-          containing the URL to direct the user to. This URL MUST be unique
-          for the request and MUST NOT contain any security-sensitive
+          <t>If the client indicates that it can <xref
+          target="request-interact-redirect">redirect to an arbitrary
+          URL</xref> and the AS supports this capability for the client's
+          request, the AS responds with the "interaction_url" field, which is
+          a string containing the URL to direct the user to. This URL MUST be
+          unique for the request and MUST NOT contain any security-sensitive
           information.</t>
 
           <figure>
@@ -1097,8 +1125,9 @@
 
         <section anchor="response-interact-short"
                  title="Redirection to a short URL">
-          <t>If the client indicates that it can redirect to an arbitrary
-          short URL and the AS supports this capability for the client's
+          <t>If the client indicates that it can <xref
+          target="request-interact-short">redirect to an arbitrary short
+          URL</xref> and the AS supports this capability for the client's
           request, the AS responds with the "short_interaction_url" field,
           which is a string containing the URL to direct the user to. This URL
           MUST be unique for the request and MUST NOT contain any
@@ -1117,13 +1146,14 @@
           out the URL in an interactive console.</t>
 
           <t>[[ Editor's note: should we rename this to "short_redirect" to
-          match the request? Downside: it conflicts with OAuth 2's
+          match the request? Downside: it kinda conflicts with OAuth 2's
           "redirect_uri" concept. ]]</t>
         </section>
 
         <section anchor="response-interact-app"
                  title="Launch of an application URL">
-          <t>If the client indicates that it can launch an application URL and
+          <t>If the client indicates that it can <xref
+          target="request-interact-app">launch an application URL</xref> and
           the AS supports this capability for the client's request, the AS
           responds with the "app" field, which is a string containing the URL
           to direct the user to. This URL MUST be unique for the request and
@@ -1147,11 +1177,12 @@
 
         <section anchor="response-interact-callback"
                  title="Callback to a Client URL">
-          <t>If the client indicates that it can receive a post-interaction
-          callback on a URL and the AS supports this capability for the
+          <t>If the client indicates that it can <xref
+          target="request-interact-callback">receive a post-interaction
+          callback on a URL</xref> and the AS supports this capability for the
           client's request, the AS responds with a "callback_server_nonce"
-          that the client will use in validating the callback as defined in [
-          validating a hash ].</t>
+          that the client will use in validating the callback as defined in
+          <xref target="interaction-hash"/>.</t>
 
           <figure>
             <artwork><![CDATA["callback_server_nonce": "MBDOFXG4Y5CVJCX821LH"]]></artwork>
@@ -1172,11 +1203,12 @@
 
         <section anchor="response-interact-pushback"
                  title="Push to a Client URL">
-          <t>If the client indicates that it can receive a post-interaction
-          push on a URL and the AS supports this capability for the client's
+          <t>If the client indicates that it can <xref
+          target="request-interact-pushback">receive a post-interaction push
+          on a URL</xref> and the AS supports this capability for the client's
           request, the AS responds with a "pushback_server_nonce" that the
-          client will use in validating the pushback call as defined in [
-          validating a hash ].</t>
+          client will use in validating the pushback call as defined in <xref
+          target="interaction-hash"/>.</t>
 
           <figure>
             <artwork><![CDATA["pushback_server_nonce": "MBDOFXG4Y5CVJCX821LH"]]></artwork>
@@ -1197,10 +1229,11 @@
 
         <section anchor="response-interact-usercode"
                  title="Display of a Short Code">
-          <t>If the client indicates that it can display a short user-typable
-          code and the AS supports this capability for the client's request,
-          the AS responds with a "user_code" field. This field is an object
-          that contains the following members.</t>
+          <t>If the client indicates that it can <xref
+          target="request-interact-usercode">display a short user-typable
+          code</xref> and the AS supports this capability for the client's
+          request, the AS responds with a "user_code" field. This field is an
+          object that contains the following members.</t>
 
           <t><list style="hanging">
               <t hangText="code">REQUIRED. A unique short code that the user
@@ -1208,7 +1241,8 @@
               case-insensitive, MUST consist of only easily typeable
               characters (such as letters or numbers). The time in which this
               code will be accepted SHOULD be short lived, such as several
-              minutes.</t>
+              minutes. It is RECOMMENDED that this code be no more than eight
+              characters in length.</t>
 
               <t hangText="url">RECOMMENDED. The interaction URL that the RC
               will direct the RO to. This URL MUST be stable at the AS such
@@ -1232,7 +1266,9 @@
           via a secondary device, it is not expected that the client redirect
           the user to the URL. If the client is capable of communicating an
           arbitrary URL to the user, such as through a scannable code, the
-          client SHOULD use the "redirect" or "short_redirect" capabilities
+          client SHOULD use the <xref
+          target="request-interact-redirect">"redirect"</xref> or <xref
+          target="request-interact-short">"short_redirect"</xref> capabilities
           for this purpose.</t>
         </section>
 
@@ -1242,7 +1278,7 @@
         </section>
       </section>
 
-      <section anchor="response-subject" title="User Information">
+      <section anchor="response-subject" title="Returning User Information">
         <t>If information about the current user is requested and the AS
         grants the client access to that data, the AS returns the approved
         information in the "subject" response field. This field is an object
@@ -1250,9 +1286,10 @@
 
         <t><list style="hanging">
             <t hangText="sub-ids">An array of subject identifiers for the
-            user, as defined by [[ draft-ietf-secevent-subject-identifier ]].
-            [[ Editor's note: privacy considerations are needed around
-            returning identifiers. ]]</t>
+            user, as defined by <xref
+            target="I-D.ietf-secevent-subject-identifiers"/>. [[ Editor's
+            note: privacy considerations are needed around returning
+            identifiers. ]]</t>
 
             <t hangText="assertions">An object containing assertions as values
             keyed on the assertion type defined by [[ registry TBD ]]. [[
@@ -1279,16 +1316,16 @@
       </section>
 
       <section anchor="response-dynamic-handles"
-               title="Dynamic Handle Reference Binding">
+               title="Returning Dynamically-bound Reference Handles">
         <t>Many parts of the client's request can be passed as either a value
         or a reference. Some of these references, such as for the client's
-        keys or the resources, can be managed statically through an admin
-        console or developer portal. If desired, the AS MAY also generate and
-        return some of these references dynamically to the client in its
-        response to facilitate multiple interactions with the same software.
-        The client SHOULD use these references in future requests in lieu of
-        sending the associated data value. These handles are intended to be
-        used on future requests.</t>
+        keys or the resources, can sometimes be managed statically through an
+        admin console or developer portal provided by the AS or RS. If
+        desired, the AS MAY also generate and return some of these references
+        dynamically to the client in its response to facilitate multiple
+        interactions with the same software. The client SHOULD use these
+        references in future requests in lieu of sending the associated data
+        value. These handles are intended to be used on future requests.</t>
 
         <t>Dynamically generated handles are string values that MUST be
         protected by the client as secrets. Handle values MUST be unguessable
@@ -1381,11 +1418,12 @@
     </section>
 
     <section anchor="user-interaction" title="Interaction at the AS">
-      <t>If the client indicates that it is capable of driving interaction
-      with the user in its request <xref target="request-interact"/>, and the
-      AS determines that interaction is required, the client SHOULD initiate
-      one of the returned interaction capabilities in the response <xref
-      target="response-interact"/>.</t>
+      <t>If the client <xref target="request-interact">indicates that it is
+      capable of driving interaction with the user in its request</xref>, and
+      the AS determines that interaction is required, the client SHOULD
+      initiate one of the returned <xref
+      target="response-interact">interaction capabilities in the
+      response</xref>.</t>
 
       <t>When the RO is interacting with the AS, the AS MAY perform whatever
       actions it sees fit, including but not limited to:</t>
@@ -1394,7 +1432,7 @@
           <t>authenticate the user as RO</t>
 
           <t>gather consent and authorization from the RO for access to
-          requested resources or the </t>
+          requested resources or the</t>
 
           <t>allow the RO to modify the parameters of the request (such as
           disallowing some requested resources or specifying an account or
@@ -1407,14 +1445,16 @@
 
       <section anchor="interaction-redirect"
                title="Interaction at a Redirected URI">
-        <t>When the user is directed to the AS through the "interaction_url"
-        or "short_interaction_url" methods, the AS can interact with the user
-        through their web browser to authenticate the user as an RO and gather
-        their consent. Note that since the client does not add any parameters
-        to the URL, the AS MUST determine the grant request being referenced
-        from the URL value itself. If the URL cannot be associated with a
-        currently active request, the AS MUST display an error to the user and
-        MUST NOT attempt to redirect the user back to any client.</t>
+        <t>When the user is directed to the AS through the <xref
+        target="response-interact-redirect">"interaction_url"</xref> or <xref
+        target="response-interact-short">"short_interaction_url"</xref>
+        capabilities, the AS can interact with the user through their web
+        browser to authenticate the user as an RO and gather their consent.
+        Note that since the client does not add any parameters to the URL, the
+        AS MUST determine the grant request being referenced from the URL
+        value itself. If the URL cannot be associated with a currently active
+        request, the AS MUST display an error to the user and MUST NOT attempt
+        to redirect the user back to any client.</t>
 
         <t>The interaction URL MUST be reachable from the RO's browser, though
         note that the RO MAY open the URL on a separate device from the RC
@@ -1424,14 +1464,15 @@
 
       <section anchor="interaction-usercode"
                title="Interaction at the User Code URI">
-        <t>When the user is directed to the AS through the "user_code"
-        methods, the AS can interact with the user through their web browser
-        to collect the user code, authenticate the user as an RO, and gather
-        their consent. Note that since the URL itself is static, the AS MUST
-        determine the grant request being referenced from the user code value
-        itself. If the user code cannot be associated with a currently active
-        request, the AS MUST display an error to the user and MUST NOT attempt
-        to redirect the user back to any client.</t>
+        <t>When the user is directed to the AS through the <xref
+        target="response-interact-usercode">"user_code"</xref> capability, the
+        AS can interact with the user through their web browser to collect the
+        user code, authenticate the user as an RO, and gather their consent.
+        Note that since the URL itself is static, the AS MUST determine the
+        grant request being referenced from the user code value itself. If the
+        user code cannot be associated with a currently active request, the AS
+        MUST display an error to the user and MUST NOT attempt to redirect the
+        user back to any client.</t>
 
         <t>The user code URL MUST be reachable from the RO's browser, though
         note that the RO MAY open the URL on a separate device from the RC
@@ -1442,10 +1483,10 @@
       <section anchor="interaction-app"
                title="Interaction through an Application URI">
         <t>When the user successfully launches an application through the
-        "app" method, the AS interacts with the user through that application
-        to authenticate the user as the RO and gather their consent. The
-        details of this interaction are out of scope for this
-        specification.</t>
+        <xref target="response-interact-app">"app" capability</xref>, the AS
+        interacts with the user through that application to authenticate the
+        user as the RO and gather their consent. The details of this
+        interaction are out of scope for this specification.</t>
 
         <t>[[ Editor's note: Should we have anything to say about an app
         sending information to a back-end to get details on the pending
@@ -1453,21 +1494,22 @@
       </section>
 
       <section anchor="interaction-finalize" title="Finalizing Interaction">
-        <t>Upon completing an interaction with the user, if either a
-        "callback" or "pushback" capability is available with the current
-        request, the AS MUST follow the appropriate method at the end of
-        interaction to allow the client to continue. If neither capability is
-        available, the AS SHOULD instruct the user to return to their client
-        software upon completion. Note that these steps still take place in
-        most error cases, such as when the user has denied access. This allows
-        the client to potentially recover from the error state without
-        restarting. [[ Editor's note: there might be some other kind of
-        push-based notification or callback that the client can use, or an
-        out-of-band protocol. The AS would know about this if supported and
-        used, but the guidance here should be written in such a way as to not
-        be too restrictive in the next steps that it can take. Still, it's
+        <t>Upon completing an interaction with the user, if either a <xref
+        target="response-interact-callback">"callback"</xref> or <xref
+        target="response-interact-pushback">"pushback"</xref> capability is
+        available with the current request, the AS MUST follow the appropriate
+        method at the end of interaction to allow the client to continue. If
+        neither capability is available, the AS SHOULD instruct the user to
+        return to their client software upon completion. Note that these steps
+        still take place in most error cases, such as when the user has denied
+        access. This allows the client to potentially recover from the error
+        state without restarting. [[ Editor's note: there might be some other
+        kind of push-based notification or callback that the client can use,
+        or an out-of-band protocol. The AS would know about this if supported
+        and used, but the guidance here should be written in such a way as to
+        not be too restrictive in the next steps that it can take. Still, it's
         important that the AS not expect clients to poll if the client has
-        stated it can take a callback. ]] </t>
+        stated it can take a callback. ]]</t>
 
         <t>The AS MUST calculate a hash value as described in <xref
         target="interaction-hash"/>. The client will use this value to
@@ -1476,7 +1518,7 @@
         <t>The AS MUST create an interaction reference and associate that
         reference with the current interaction and the underlying pending
         request. This value MUST be sufficiently random so as not to be
-        guessable by an attacker. </t>
+        guessable by an attacker.</t>
 
         <t>The AS then MUST send the hash and interaction reference based on
         the interaction finalization capability as described in the following
@@ -1486,13 +1528,15 @@
 
         <section anchor="interaction-callback"
                  title="Finalizing Interaction with a Callback URI">
-          <t>When using the "callback" interaction capability, the AS signals
-          to the client that interaction is complete and the request can be
-          continued by directing the user (in their browser) back to the
-          client's callback URL sent in [[ callback request ]]. </t>
+          <t>When using the <xref
+          target="response-interact-callback">"callback" interaction
+          capability</xref>, the AS signals to the client that interaction is
+          complete and the request can be continued by directing the user (in
+          their browser) back to the client's callback URL sent in <xref
+          target="request-interact-callback">the callback request</xref>.</t>
 
           <t>The AS secures this callback by adding the hash and interaction
-          reference as query parameters to the client's callback URL. </t>
+          reference as query parameters to the client's callback URL.</t>
 
           <t><list style="hanging">
               <t hangText="hash">REQUIRED. The interaction hash value as
@@ -1518,17 +1562,19 @@
           <t>When receiving the request, the client MUST parse the query
           parameters to calculate and validate the hash value as described in
           <xref target="interaction-hash"/>. If the hash validates, the client
-          sends a continuation request to the AS as described in [[
-          continuation request ]] using the interaction reference value
-          received here.</t>
+          sends a continuation request to the AS as described in <xref
+          target="continue-after-interaction"/> using the interaction
+          reference value received here.</t>
         </section>
 
         <section anchor="interaction-pushback"
                  title="Finalizing Interaction with a Pushback URI">
-          <t>When using the "pushback" interaction capability, the AS signals
-          to the client that interaction is complete and the request can be
-          continued by sending an HTTP POST request to the client's pushback
-          URL sent in [[ pushback request ]].</t>
+          <t>When using the <xref
+          target="response-interact-pushback">"pushback" interaction
+          capability</xref>, the AS signals to the client that interaction is
+          complete and the request can be continued by sending an HTTP POST
+          request to the client's pushback URL sent in <xref
+          target="request-interact-pushback">the pushback request</xref>.</t>
 
           <t>The entity message body is a JSON object consisting of the
           following two elements:</t>
@@ -1558,8 +1604,9 @@ Content-Type: application/json
           <t>When receiving the request, the client MUST parse the JSON object
           and validate the hash value as described in <xref
           target="interaction-hash"/>. If the hash validates, the client sends
-          a continuation request to the AS as described in [[ continuation
-          request ]] using the interaction reference value received here.</t>
+          a continuation request to the AS as described in <xref
+          target="continue-after-interaction"/> using the interaction
+          reference value received here.</t>
         </section>
 
         <section anchor="interaction-hash"
@@ -1567,19 +1614,22 @@ Content-Type: application/json
           <t>The "hash" parameter in the callback and pushback response ties
           the front channel response to an ongoing request by using values
           known only to the parties involved. This prevents several kinds of
-          session fixation and is required to be used.</t>
+          session fixation attacks against the client.</t>
 
-          <t>To calculate the "hash" value for the interaction response, the
-          party doing the calculation first takes the "nonce" value sent by
-          the RC in the interaction section of the initial request <xref
-          target="request-interact-callback"/>, the AS's nonce value, and the
-          "interact_ref" returned in the callback response. For a "callback"
-          return, the AS nonce is the "callback_server_nonce" value, while for
-          a "pushback" return the AS nonce is the "pushback_server_nonce"
-          value. These three values are concatenated to each other in this
-          order using a single newline character as a separator between the
-          fields. There is no padding or whitespace before or after any of the
-          lines, and no trailing newline character.</t>
+          <t>To calculate the "hash" value, the party doing the calculation
+          first takes the "nonce" value sent by the RC in the <xref
+          target="request-interact-callback">interaction section of the
+          initial request</xref>, the AS's nonce value, and the "interact_ref"
+          returned in the callback response. For a "callback" return, the AS
+          nonce is the "callback_server_nonce" value in <xref
+          target="response-interact-callback">the callback response</xref>,
+          while for a "pushback" return the AS nonce is the
+          "pushback_server_nonce" value in <xref
+          target="response-interact-pushback">the pushback response</xref>.
+          These three values are concatenated to each other in this order
+          using a single newline character as a separator between the fields.
+          There is no padding or whitespace before or after any of the lines,
+          and no trailing newline character.</t>
 
           <figure>
             <artwork><![CDATA[VJLO6A4CAYLBXHTR0KRO
@@ -1638,12 +1688,18 @@ MBDOFXG4Y5CVJCX821LH
       <t/>
 
       <t>The client MAY include other parameters as described here or as
-      defined [[ in a registry TBD ]].</t>
+      defined [[ in a registry TBD ]]. [[ Editor's note: We probably want to
+      allow other parameters, like modifying the resources requested or
+      providing more user information. We'll certainly have some kinds of
+      specific challenge-response protocols as there's already been interest
+      in that kind of thing, and the continuation request is the place where
+      that would fit. ]]</t>
 
-      <t>If a "wait" parameter was included in the response, the client MUST
-      NOT call the continuation URI prior to waiting the number of seconds
-      indicated. If no "wait" period is indicated, the client SHOULD wait [[ a
-      reasonable amount of time so as not to DOS the server?? ]].</t>
+      <t>If a "wait" parameter was included in the continuation response, the
+      client MUST NOT call the continuation URI prior to waiting the number of
+      seconds indicated. If no "wait" period is indicated, the client SHOULD
+      wait at least 5 seconds [[ Editor's note: what's a reasonable amount of
+      time so as not to DOS the server?? ]].</t>
 
       <t>The response from the AS is a JSON object and MAY contain any of the
       elements described in <xref target="response"/>, with some
@@ -1659,17 +1715,18 @@ MBDOFXG4Y5CVJCX821LH
       interaction mechanisms. Unique values such as interaction URIs and
       nonces SHOULD be re-generated and not re-used.</t>
 
-      <t>The client MUST present proof of the same key identified in the
-      initial request <xref target="request-key"/> as descrived in <xref
-      target="binding-keys"/>.</t>
+      <t>The client MUST present proof of the same <xref
+      target="request-key">key identified in the initial request</xref> by
+      signing the request as described in <xref target="binding-keys"/>.</t>
 
-      <section title="Continuing a Finalized Interaction">
-        <t>If the client has received an interaction reference from a
-        "callback" <xref target="interaction-callback"/> or "pushback" <xref
-        target="interaction-pushback"/> incoming message, the client MUST
-        include the "interaction_ref" in its continuation request. Note that
-        the client validates the hash before making the continuation request,
-        but does not send the hash back to the AS.</t>
+      <section anchor="continue-after-interaction"
+               title="Continuing after a Finalized Interaction">
+        <t>If the client has received an interaction reference from a <xref
+        target="interaction-callback">"callback"</xref> or <xref
+        target="interaction-pushback">"pushback"</xref> incoming message, the
+        client MUST include the "interaction_ref" in its continuation request.
+        Note that the client validates the hash before making the continuation
+        request, but the client does not send the hash back to the AS.</t>
 
         <figure>
           <artwork><![CDATA[{
@@ -1677,6 +1734,14 @@ MBDOFXG4Y5CVJCX821LH
   "interact_ref": "4IFWWIKYBC2PQ6U56NL1"
 }]]></artwork>
         </figure>
+
+        <t/>
+      </section>
+
+      <section anchor="continue-after-tokens"
+               title="Continuing after Tokens are Issued">
+        <t>A request MAY be continued even after access tokens have been
+        issued, so long as the handle is valid.</t>
       </section>
     </section>
 
@@ -1685,30 +1750,32 @@ MBDOFXG4Y5CVJCX821LH
       described in <xref target="response-token-single"/>, the client MAY call
       this URL to manage the access token with the following actions.</t>
 
-      <t>The client MUST present proof of the same key identified in the
-      initial request <xref target="request-key"/> as descrived in <xref
-      target="binding-keys"/>.</t>
+      <t>The client MUST present proof of the same <xref
+      target="request-key">key identified in the initial request</xref> as
+      described in <xref target="binding-keys"/>.</t>
 
-      <section title="Rotating the Access Token">
+      <section anchor="rotate-access-token" title="Rotating the Access Token">
         <t>The client makes an HTTP POST to the token management URI, signing
-        the request with its key. The AS will invalidate the current access
-        token associated with this URL, if possible, and return a new access
-        token response as described in <xref target="response-token-single"/>.
-        Note that this MAY include a new access token management URL. The AS
-        MAY </t>
+        the request with its key. If the token was issued to the client
+        identified by the key, the AS will invalidate the current access token
+        associated with this URL, if possible, and return a new access token
+        response as described in <xref target="response-token-single"/>. Note
+        that this MAY include an updated access token management URL.</t>
       </section>
 
-      <section title="Revoking the Access Token">
+      <section anchor="revoke-access-token" title="Revoking the Access Token">
         <t>The client makes an HTTP DELETE request to the token management
-        URI, signing the request with its key. The AS will invalidate the
-        current access token associated with this URL, if possible.</t>
+        URI, signing the request with its key. If the token was issued to the
+        client identified by the key, the AS will invalidate the current
+        access token associated with this URL, if possible, and return an HTTP
+        201 response code.</t>
       </section>
     </section>
 
-    <section title="Sending Access Tokens">
+    <section anchor="send-access-token" title="Sending Access Tokens">
       <t>The method used to send an access token depends on the value of the
-      "proof" parameter in the access token response <xref
-      target="response-token-single"/>. </t>
+      "proof" parameter in <xref target="response-token-single">the access
+      token response</xref>.</t>
 
       <t>If this value is "bearer", the access token is sent using the HTTP
       Header method defined in <xref target="RFC6750"/>.</t>
@@ -1719,9 +1786,11 @@ MBDOFXG4Y5CVJCX821LH
 
       <t/>
 
-      <t>If this value is anything else, the access token is sent using the
-      HTTP authorization scheme "GNAP" along with a key proof as described in
-      <xref target="binding-keys"/>.</t>
+      <t>If the "proof" value is any other string, the access token is sent
+      using the HTTP authorization scheme "GNAP" along with a key proof as
+      described in <xref target="binding-keys"/> for the key bound to the
+      access token. For example, a "jwsd"-bound access token is sent as
+      follows:</t>
 
       <figure>
         <artwork><![CDATA[Authorization: GNAP OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0
@@ -1734,7 +1803,8 @@ JWS-Signature: eyj0....]]></artwork>
       header type for differently-bound access tokens, but instead these
       values should somehow reflect the key binding types. Maybe there can be
       multiple fields after the "GNAP" keyword using structured headers? Or a
-      set of derived headers like GNAP-mtls? ]]</t>
+      set of derived headers like GNAP-mtls? This might also be better as a
+      separate specification, like OAuth 2. ]]</t>
     </section>
 
     <section anchor="binding-keys" title="Binding Keys">
@@ -1779,7 +1849,8 @@ JWS-Signature: eyj0....]]></artwork>
         and MUST NOT be none.</t>
 
         <t>The RC presents the signature in the JWS-Signature HTTP Header
-        field. [Note: this is a custom header field, do we need this?]</t>
+        field. [Editor's Note: this is a custom header field, do we need
+        this?]</t>
 
         <figure>
           <artwork><![CDATA[JWS-Signature: eyj0....]]></artwork>
@@ -1791,6 +1862,9 @@ JWS-Signature: eyj0....]]></artwork>
         contents as a detached JWS object. The HTTP Body is used as the
         payload for purposes of validating the JWS, with no
         transformations.</t>
+
+        <t>[[ Editor's note: this is a potentially fragile signature mechanism
+        but it's simple to calculate. ]]</t>
       </section>
 
       <section title="Attached JWS">
@@ -1855,7 +1929,7 @@ JWS-Signature: eyj0....]]></artwork>
       <t>By design, the protocol minimizes the need for any pre-flight
       discovery. To begin a transaction, the RC only needs to know the
       transaction endpoint of the AS, and everything else can be negotiated
-      dynamically. </t>
+      dynamically.</t>
 
       <t>If the RC wants to optimize its calls to the AS, it MAY send an HTTP
       OPTIONS request to the transaction endpoint to retrieve the server's
@@ -1910,13 +1984,22 @@ JWS-Signature: eyj0....]]></artwork>
       target="request-resource">req</xref>. This resource reference handle
       SHOULD be sufficient for at least the action the client was attempting
       to take at the RS. The means of the RS obtaining or generating this
-      resource reference are out of scope for this specification.</t>
+      resource reference are out of scope for this specification. [[ Editor's
+      note: This could be statically configured at the RS, but we could also
+      specify a simple protocol for an RS to send some kind of resource
+      description to the AS, tied to the RS's keys, and get back an identifier
+      to hand to the client. ]]</t>
 
       <figure>
         <artwork><![CDATA[WWW-Authenticate: GNAP as_uri=http://server.example/transaction,resource=FWWIKYBQ6U56NL1]]></artwork>
       </figure>
 
       <t/>
+
+      <t>The client then makes a call to the "as_uri" as described in , with
+      the value of "resource" as one of the members of the "resources" array
+      <xref target="request-resource-single"/>. The client MAY request
+      additional resources and additional information.</t>
 
       <t>[[ Editor's note: this borrow's heavily from UMA 2's "distributed
       authorization" model and, like UMA, might be better suited to an
@@ -1961,17 +2044,9 @@ JWS-Signature: eyj0....]]></artwork>
 
       <?rfc include='reference.RFC.7515.xml'?>
 
-      <?rfc include='reference.RFC.7519.xml'?>
-
-      <?rfc include='reference.RFC.7662.xml'?>
-
-      <?rfc include='reference.RFC.6749.xml'?>
-
       <?rfc include='reference.RFC.6750.xml'?>
 
       <?rfc include='reference.RFC.7797.xml'?>
-
-      <?rfc include='reference.RFC.8126.xml'?>
 
       <?rfc include='reference.RFC.8174.xml'?>
 
@@ -1983,9 +2058,9 @@ JWS-Signature: eyj0....]]></artwork>
 
       <?rfc include='reference.I-D.ietf-oauth-signed-http-request.xml'?>
 
-      <?rfc include='reference.I-D.ietf-oauth-mtls.xml'?>
-
       <?rfc include='reference.I-D.ietf-oauth-dpop.xml'?>
+
+      <?rfc include='reference.I-D.ietf-secevent-subject-identifiers.xml'?>
 
       <reference anchor="BCP195"
                  target="http://www.rfc-editor.org/info/bcp195">
@@ -2035,15 +2110,15 @@ JWS-Signature: eyj0....]]></artwork>
       <t>-09</t>
 
       <t><list style="symbols">
-          <t>Major document refactoring.</t>
+          <t>Major document refactoring based on request and response
+          capabilities.</t>
 
           <t>Changed from "claims" language to "subject identifier"
           language.</t>
 
           <t>Added "pushback" interaction capability.</t>
 
-          <t>Removed DIDCOMM interaction (better left to extensions
-          anyway).</t>
+          <t>Removed DIDCOMM interaction (better left to extensions).</t>
 
           <t>Excised "transaction" language in favor of "Grant" where
           appropriate.</t>
