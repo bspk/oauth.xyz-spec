@@ -99,7 +99,7 @@
           </list></t>
 
         <t>[[ Editor's note: More sequences and common connections are needed.
-        ]]</t>
+        See <xref target="examples"/> for more specific examples. ]]</t>
       </section>
     </section>
 
@@ -435,7 +435,7 @@
 
         <figure>
           <artwork><![CDATA[    "key": {
-        "proof": "http-message-sig",
+        "proof": "httpsig",
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -464,6 +464,11 @@
         </figure>
 
         <t/>
+
+        <t>If the key is passed by reference, the proofing mechanism
+        associated with that key reference MUST also be used. If the AS does
+        not recognize the key reference handle, the request MUST be rejected
+        with an error.</t>
 
         <t>If the client identifies its key by reference, the referenced key
         MAY be a symmetric key known to the AS. The client MUST NOT send a
@@ -2212,6 +2217,580 @@ JWS-Signature: eyj0....]]></artwork>
       <t><list style="symbols">
           <t>Initial submission.</t>
         </list></t>
+    </section>
+
+    <section anchor="examples" title="Example Protocol Flows">
+      <t>The protocol defined in this specification provides a number of
+      features that can be combined to solve many different kinds of
+      authentication scenarios. This section seeks to show examples of how the
+      protocol would be applied for different situations.</t>
+
+      <t>Some longer fields, particularly cryptographic information, have been
+      truncated for display purposes in these examples.</t>
+
+      <section title="Redirect-Based User Interaction">
+        <t>In this scenario, the user is the RO and has access to a web
+        browser, and the client can take front-channel callbacks on the same
+        device as the user. This combination is analogous to the OAuth 2
+        Authorization Code grant type.</t>
+
+        <t>The client initiates the request to the AS. Here the client
+        identifies itself using its public key.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        {
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        }
+    ],
+    "key": {
+        "proof": "jwsd",
+        "jwk": {
+            "kty": "RSA",
+            "e": "AQAB",
+            "kid": "xyz-1",
+            "alg": "RS256",
+            "n": "kOB5rR4Jv0GMeLaY6_It_r3ORwdf8ci_JtffXyaSx8xY..."
+        }
+    },
+    "interact": {
+        "redirect": true,
+        "callback": {
+            "uri": "https://client.example.net/return/123455",
+            "nonce": "LKLTI25DK82FX4T4QFZC"
+        }
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS processes the request and determines that the RO needs to
+        interact. The AS returns the following response giving the client the
+        information it needs to connect. The AS has also indicated to the
+        client that it can use the given key handle to identify itself in
+        future calls.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "interaction_url": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
+    "server_nonce": "MBDOFXG4Y5CVJCX821LH",
+    "continue": {
+        "handle": "80UPRY5NM33OMUKMKSKU",
+        "uri": "https://server.example.com/continue"
+    },
+    "key_handle": "7C7C4AZ9KHRS6X63AJAO"
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The client saves the response and redirects the user to the
+        interaction_url by sending the following HTTP message to the user's
+        browser.</t>
+
+        <figure>
+          <artwork><![CDATA[HTTP 302 Found
+Location: https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The user's browser fetches the AS's interaction URL. The user logs
+        in, is identified as the RO for the resource being requested, and
+        approves the request. Since the AS has a callback parameter, the AS
+        generates the interaction reference, calculates the hash, and
+        redirects the user back to the client with these additional values
+        added as query parameters.</t>
+
+        <figure>
+          <artwork><![CDATA[HTTP 302 Found
+Location: https://client.example.net/return/123455
+  ?hash=p28jsq0Y2KK3WS__a42tavNC64ldGTBroywsWxT4md_jZQ1R2HZT8BOWYHcLmObM7XHPAdJzTZMtKBsaraJ64A
+  &interact_ref=4IFWWIKYBC2PQ6U56NL1]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The client receives this request from the user's browser. The
+        client ensures that this is the same user that was sent out by
+        validating session information and retrieves the stored pending
+        request. The client uses the values in this to validate the hash
+        parameter. The client then calls the continuation URL and presents the
+        handle and interaction reference in the request body. The client signs
+        the request as above.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+
+{
+    "handle": "80UPRY5NM33OMUKMKSKU",
+    "interact_ref": "4IFWWIKYBC2PQ6U56NL1"
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS retrieves the pending request based on the handle and issues
+        a bearer access token and returns this to the client.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "proof": "bearer",
+        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
+        "resources": [{
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        }]
+    },
+    "continue": {
+        "handle": "80UPRY5NM33OMUKMKSKU",
+        "uri": "https://server.example.com/continue"
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+      </section>
+
+      <section title="Secondary Device Interaction">
+        <t>In this scenario, the user does not have access to a web browser on
+        the device and must use a secondary device to interact with the AS.
+        The client can display a user code or a printable QR code. The client
+        prefers a short URL if one is available.</t>
+
+        <t>The client initiates the request to the AS.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        "dolphin-metadata", "some other thing"
+    ],
+    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "interact": {
+        "redirect": true,
+        "short_redirect": true,
+        "user_code": true
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS processes this and determines that the RO needs to interact.
+        The AS supports both long and short redirect URIs for interaction, so
+        it includes both. Since there is no "callback" the AS does not include
+        a nonce, but does include a "wait" parameter on the continuation
+        section because it expects the client to poll for results.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "interaction_url": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
+    "short_interaction_url": "https://srv.ex/MXKHQ",
+    "user_code": {
+        "code": "A1BC-3DFF",
+        "url": "https://srv.ex/device"
+    },
+    "continue": {
+        "handle": "80UPRY5NM33OMUKMKSKU",
+        "uri": "https://server.example.com/continue",
+        "wait": 60
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The client saves the response and displays the user code visually
+        on its screen along with the static device URL. The client also
+        displays the short interaction URL as a QR code to be scanned.</t>
+
+        <t>If the user scans the code, they are taken to the interaction
+        endpoint and the AS looks up the current pending request based on the
+        incoming URL. If the user instead goes to the static page and enters
+        the code manually, the AS looks up the current pending request based
+        on the value of the user code. In both cases, the user logs in, is
+        identified as the RO for the resource being requested, and approves
+        the request. Once the request has been approved, the AS displays to
+        the user a message to return to their device.</t>
+
+        <t>Meanwhile, the client periodically polls the AS every 60 seconds at
+        the continuation URL.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+
+{
+    "handle": "80UPRY5NM33OMUKMKSKU"
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS retrieves the pending request based on the handle and
+        determines that it has not yet been authorized. The AS indicates to
+        the client that no access token has yet been issued but it can
+        continue to call after another 60 second timeout.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "continue": {
+        "handle": "BI9QNW6V9W3XFJK4R02D",
+        "uri": "https://server.example.com/continue",
+        "wait": 60
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>Note that the continuation handle has been rotated since it was
+        used by the client to make this call. The client polls the
+        continuation URL after a 60 second timeout using the new handle.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+
+{
+    "handle": "BI9QNW6V9W3XFJK4R02D"
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS retrieves the pending request based on the handle and
+        determines that it has been approved and it issues an access
+        token.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "proof": "bearer",
+        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
+        "resources": [
+            "dolphin-metadata", "some other thing"
+        ]
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+      </section>
+
+      <section title="No User Involvement">
+        <t>In this scenario, the client is requesting access on its own
+        behalf, with no user to interact with.</t>
+
+        <t>The client creates a request to the AS, identifying itself with its
+        public key and using MTLS to make the request.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+
+{
+    "resources": [
+        "backend service", "nightly-routine-3"
+    ],
+    "key": {
+        "proof": "mtls",
+        "cert#S256": "bwcK0esc3ACC3DB2Y5_lESsXE8o9ltc05O89jdN-dg2"
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS processes this and determines that the client can ask for
+        the requested resources and issues an access token.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "proof": "bearer",
+        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
+        "resources": [
+            "backend service", "nightly-routine-3"
+        ]
+    }
+}]]></artwork>
+        </figure>
+      </section>
+
+      <section title="Asynchronous Authorization">
+        <t>In this scenario, the client is requesting on behalf of a specific
+        RO, but has no way to interact with the user. The AS can
+        asynchronously reach out to the RO for approval in this scenario.</t>
+
+        <t>The client starts the request at the AS by requesting a set of
+        resources. The client also identifies a particular user.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        {
+            "type": "photo-api",
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        },
+        "read", "dolphin-metadata",
+        {
+            "type": "financial-transaction",
+            "actions": [
+                "withdraw"
+            ],
+            "identifier": "account-14-32-32-3", 
+            "currency": "USD"
+        },
+        "some other thing"
+    ],
+    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "user": {
+        "sub-ids": [ {
+            "subject_type": "email",
+            "email": "user@example.com"
+        } ]
+   }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS processes this and determines that the RO needs to interact.
+        The AS determines that it can reach the identified user asynchronously
+        and that the identified user does have the ability to approve this
+        request. The AS indicates to the client that it can poll for
+        continuation.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "continue": {
+        "handle": "80UPRY5NM33OMUKMKSKU",
+        "uri": "https://server.example.com/continue",
+        "wait": 60
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS reaches out to the RO and prompts them for consent. In this
+        example, the AS has an application that it can push notifications in
+        to for the specified account. </t>
+
+        <t>Meanwhile, the client periodically polls the AS every 60 seconds at
+        the continuation URL.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+
+{
+    "handle": "80UPRY5NM33OMUKMKSKU"
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS retrieves the pending request based on the handle and
+        determines that it has not yet been authorized. The AS indicates to
+        the client that no access token has yet been issued but it can
+        continue to call after another 60 second timeout.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "continue": {
+        "handle": "BI9QNW6V9W3XFJK4R02D",
+        "uri": "https://server.example.com/continue",
+        "wait": 60
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>Note that the continuation handle has been rotated since it was
+        used by the client to make this call. The client polls the
+        continuation URL after a 60 second timeout using the new handle.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+
+{
+    "handle": "BI9QNW6V9W3XFJK4R02D"
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The AS retrieves the pending request based on the handle and
+        determines that it has been approved and it issues an access
+        token.</t>
+
+        <figure>
+          <artwork><![CDATA[Content-type: application/json
+
+{
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "proof": "bearer",
+        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
+        "resources": [
+            "dolphin-metadata", "some other thing"
+        ]
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+      </section>
+
+      <section title="Applying OAuth 2 Scopes and Client IDs">
+        <t>In this scenario, the client developer has a client_id and set of
+        scope values from their OAuth 2 system and wants to apply them to the
+        new protocol. Traditionally, the OAuth 2 client developer would put
+        their client_id and scope values as parameters into a redirect request
+        to the authorization endpoint.</t>
+
+        <figure>
+          <artwork><![CDATA[HTTP 302 Found
+Location: https://server.example.com/authorize
+  ?client_id=7C7C4AZ9KHRS6X63AJAO
+  &scope=read%20write%20dolphin
+  &redirect_uri=https://client.example.net/return
+  &response_type=code
+  &state=123455
+]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>Now the developer wants to make an analogous request to the AS
+        using the new protocol. To do so, the client makes an HTTP POST and
+        places the OAuth 2 values in the appropriate places.</t>
+
+        <figure>
+          <artwork><![CDATA[POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        "read", "write", "dolphin"
+    ],
+    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "interact": {
+        "redirect": true,
+        "callback": {
+            "uri": "https://client.example.net/return?state=123455",
+            "nonce": "LKLTI25DK82FX4T4QFZC"
+        }
+    }
+}]]></artwork>
+        </figure>
+
+        <t/>
+
+        <t>The client_id can be used to identify the client's keys that it
+        uses for authentication, the scopes represent resources that the
+        client is requesting, and the redirect_uri and state value are
+        combined into a callback URI that can be unique per request. The
+        client additionally creates a nonce to protect the callback, separate
+        from the state parameter that it has added to its return URL.</t>
+
+        <t>From here, the protocol continues as above.</t>
+      </section>
     </section>
   </back>
 </rfc>
