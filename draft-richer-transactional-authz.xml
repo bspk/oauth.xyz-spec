@@ -162,8 +162,8 @@
 
       <t/>
 
-      <t>The request MUST be sent as a JSON obect in the body of the HTTP POST
-      request with Content-Type <spanx style="verb">application/json</spanx>,
+      <t>The request MUST be sent as a JSON object in the body of the HTTP
+      POST request with Content-Type <spanx style="verb">application/json</spanx>,
       unless otherwise specified by the signature mechanism.</t>
 
       <section anchor="request-resource" title="Requesting Resources">
@@ -349,7 +349,7 @@
                 "datatypes": [
                     "data",
                     "pictures",
-                    "walris whiskers"
+                    "walrus whiskers"
                 ]
             }
         ]
@@ -451,7 +451,7 @@
 
         <t>The AS MAY associate policies with the client software identified
         by this key, such as limiting which resources can be requested and
-        which interaciton methods can be used.</t>
+        which interaction methods can be used.</t>
 
         <t>If the client has a reference for its key, the client MAY send that
         reference handle as a string. The format of this string is opaque to
@@ -546,7 +546,7 @@
         <t>If the client is capable of driving interaction with the user, the
         client MAY declare the means that it can interact using the "interact"
         field. This field is a JSON object with keys that declare different
-        interaction capabilities. A client MUST NOT declare an interaciton
+        interaction capabilities. A client MUST NOT declare an interaction
         capability it does not support.</t>
 
         <t>The client MAY send multiple capabilities in the same request.
@@ -593,8 +593,8 @@
 
           <t/>
 
-          <t>If this interaciton capability is supported for this client and
-          request, the AS returns a redirect interaciton response <xref
+          <t>If this interaction capability is supported for this client and
+          request, the AS returns a redirect interaction response <xref
           target="response-interact-redirect"/>.</t>
         </section>
 
@@ -1054,7 +1054,7 @@
           chosen by the client in the <xref
           target="request-resource-multiple">multiple access token request
           </xref>. The values of the properties of this object are access
-          tokens as descibed in <xref target="response-token-single"/>.</t>
+          tokens as described in <xref target="response-token-single"/>.</t>
 
           <figure>
             <artwork><![CDATA[    "multiple_access_tokens": {
@@ -2006,7 +2006,7 @@ JWS-Signature: eyj0....]]></artwork>
       <xref target="request-resource-single"/>. The client MAY request
       additional resources and additional information.</t>
 
-      <t>[[ Editor's note: this borrow's heavily from UMA 2's "distributed
+      <t>[[ Editor's note: this borrows heavily from UMA 2's "distributed
       authorization" model and, like UMA, might be better suited to an
       extension than the core protocol. ]]</t>
     </section>
