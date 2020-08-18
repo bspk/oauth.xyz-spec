@@ -1393,8 +1393,8 @@ access token.
 
 ## Error response {#error-response}
 
-        If the AS determines that the request cannot be issued for any
-        reason, it responds to the RC with an error message.
+If the AS determines that the request cannot be issued for any
+reason, it responds to the RC with an error message.
 
 
 error
@@ -2149,10 +2149,10 @@ fHI6kqm3NCyCCTihe2ck5RmCc5l2KBO/vAHF0ihhFOOOby1v6qbPHQcxAU6rEb907
 
 ## DPoP {#dpop-binding}
 
-        This method is indicated by `dpop` in the
-        `proof` field. The RC creates a DPoP
-        signature header as described in {{I-D.ietf-oauth-dpop}}
-        section 2.
+This method is indicated by `dpop` in the
+`proof` field. The RC creates a DPoP
+signature header as described in {{I-D.ietf-oauth-dpop}}
+section 2.
 
 ~~~
 POST /transaction HTTP/1.1
