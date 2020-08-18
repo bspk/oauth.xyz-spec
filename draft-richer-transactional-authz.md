@@ -83,8 +83,7 @@ same party as the RO.
 The RC requests access to an RS, and the AS determines that it
 needs to interact with the user directly to get the RO's consent:
 
-1. The RC [creates a grant request and sends
-    it to the AS](#request)
+1. The RC [creates a grant request and sends it to the AS](#request)
 
 2. The AS [processes the grant request and
     determines if the RO needs to interact and sends its
@@ -94,8 +93,7 @@ needs to interact with the user directly to get the RO's consent:
     AS [interacts with the RO](#user-interaction),
     possibly by directing the RC to send the RO there 
 
-4. The RC [continues the grant at
-    the AS](#continue-request)
+4. The RC [continues the grant at the AS](#continue-request)
 
 5. The AS processes the transaction again, determining that a
     token can be issued
@@ -315,8 +313,8 @@ When requesting multiple access tokens, the resources element is
 a JSON object. The names of the JSON object elements are token
 identifiers chosen by the client, and MAY be any valid string. The
 values of the JSON object are JSON arrays representing a single
-access token request, as specified in [requesting a single access
-token](#response-token-single).
+access token request, as specified in 
+[requesting a single access token](#response-token-single).
 
 The following non-normative example shows a request for two
 separate access tokens, token1 and token2.
@@ -389,9 +387,8 @@ assertions
 
 
 If the AS knows the identifier for the current user and has
-permission to do so [[ editor's note: from the user's consent or a
-policy or ... ]], the AS MAY [return
-the user's information in its response](#response-subject).
+permission to do so [[ editor's note: from the user's consent or 
+data policy or ... ]], the AS MAY [return the user's information in its response](#response-subject).
 
 The "sub-ids" and "assertions" request fields are independent of
 each other, and a returned assertion MAY omit a requested subject
@@ -560,16 +557,14 @@ interaction capability it does not support.
 
 The client MAY send multiple capabilities in the same request.
 There is no preference order specified in this request. An AS MAY
-[respond to any, all, or none of the
-presented interaction capabilities](#response-interact) in a request, depending on
+[respond to any, all, or none of the presented interaction capabilities](#response-interact) in a request, depending on
 its capabilities and what is allowed to fulfill the request.
 
 The following sections detail requests for interaction
 capabilities. Additional interaction capabilities are defined in [[ a
 registry TBD ]].
 
-[[ Editor's note: there need to be [more
-examples](#examples) that knit together the interaction capabilities into
+[[ Editor's note: there need to be [more examples](#examples) that knit together the interaction capabilities into
 common flows, like an authz-code equivalent. But it's important for
 the protocol design that these are separate pieces to allow such
 knitting to take place. ]]
@@ -1003,15 +998,13 @@ value
 proof
 : REQUIRED. The proofing presentation
               mechanism used for presenting this access token to an RS. See
-              [the section on sending access
-              tokens](#send-access-token) for details on possible values to this field and
+              [the section on sending access tokens](#send-access-token) for details on possible values to this field and
               their requirements.
 
 manage
 : OPTIONAL. The management URI for this
               access token. If provided, the client MAY manage its access
-              token as described in [managing
-              an access token lifecycle](#token-management). This URI MUST NOT include the
+              token as described in [managing an access token lifecycle](#token-management). This URI MUST NOT include the
               access token value and MAY be different for each access
               token.
 
@@ -1072,8 +1065,7 @@ If the client has requested multiple access tokens and the AS has
 granted at least one of them, the AS responds with the
 "multiple_access_tokens" field. The value of this field is a JSON
 object, and the property names correspond to the token identifiers
-chosen by the client in the [multiple access token request
-](#request-resource-multiple). The values of the properties of this object are access
+chosen by the client in the [multiple access token request ](#request-resource-multiple). The values of the properties of this object are access
 tokens as described in {{response-token-single}}.
 
 ~~~
@@ -1099,8 +1091,7 @@ tokens are included without the omitted token. The multiple access
 token response MUST be used when multiple access tokens are
 requested, even if only one access token is issued.
 
-If the client [requested a
-single access token](#request-resource-single), the AS MUST NOT respond with multiple
+If the client [requested a single access token](#request-resource-single), the AS MUST NOT respond with multiple
 access tokens.
 
 Each access token MAY have different proofing mechanisms. If
@@ -1110,8 +1101,7 @@ used, each access token MUST have different management URIs.
 
 ## Interaction Capabilities {#response-interact}
 
-If the client has indicated a [capability to interact with the user in its
-request](#request-interact), and the AS has determined that interaction is both
+If the client has indicated a [capability to interact with the user in its request](#request-interact), and the AS has determined that interaction is both
 supported and necessary, the AS responds to the client with any of the
 following values. There is no preference order for interaction
 capabilities in the response, and it is up to the client to determine
@@ -1126,8 +1116,7 @@ This would match the request pattern. ]]
 
 ### Redirection to an arbitrary URL {#response-interact-redirect}
 
-If the client indicates that it can [redirect to an arbitrary
-URL](#request-interact-redirect) and the AS supports this capability for the client's
+If the client indicates that it can [redirect to an arbitrary URL](#request-interact-redirect) and the AS supports this capability for the client's
 request, the AS responds with the "interaction_url" field, which is
 a string containing the URL to direct the user to. This URL MUST be
 unique for the request and MUST NOT contain any security-sensitive
@@ -1152,8 +1141,7 @@ concept. ]]
 
 ### Redirection to a short URL {#response-interact-short}
 
-If the client indicates that it can [redirect to an arbitrary short
-URL](#request-interact-short) and the AS supports this capability for the client's
+If the client indicates that it can [redirect to an arbitrary short URL](#request-interact-short) and the AS supports this capability for the client's
 request, the AS responds with the "short_interaction_url" field,
 which is a string containing the URL to direct the user to. This URL
 MUST be unique for the request and MUST NOT contain any
@@ -1203,8 +1191,7 @@ like. Details TBD as people build this out. ]]
 
 ### Callback to a Client URL {#response-interact-callback}
 
-If the client indicates that it can [receive a post-interaction
-callback on a URL](#request-interact-callback) and the AS supports this capability for the
+If the client indicates that it can [receive a post-interaction callback on a URL](#request-interact-callback) and the AS supports this capability for the
 client's request, the AS responds with a "callback_server_nonce"
 that the client will use in validating the callback as defined in
 {{interaction-hash}}.
@@ -1227,8 +1214,7 @@ though. ]]
 
 ### Push to a Client URL {#response-interact-pushback}
 
-If the client indicates that it can [receive a post-interaction push
-on a URL](#request-interact-pushback) and the AS supports this capability for the client's
+If the client indicates that it can [receive a post-interaction push on a URL](#request-interact-pushback) and the AS supports this capability for the client's
 request, the AS responds with a "pushback_server_nonce" that the
 client will use in validating the pushback call as defined in 
 {{interaction-hash}}.
@@ -1459,8 +1445,7 @@ this? ]]
 
 # Interaction at the AS {#user-interaction}
 
-If the client [indicates that it is
-capable of driving interaction with the user in its request](#request-interact), and
+If the client [indicates that it is capable of driving interaction with the user in its request](#request-interact), and
 the AS determines that interaction is required and responds to one or
 more of the client's interaction capabilities, the client SHOULD
 initiate one of the returned 
@@ -1748,9 +1733,7 @@ MUST NOT make an additional continuation request. If a client does so,
 the AS MUST return an error.
 
 If the AS determines that the client still needs to drive interaction
-with the user, the AS MAY return appropriate [responses for any of the interaction
-mechanisms](#response-interact) the client [indicated
-in its initial request](#request-interact). Unique values such as interaction URIs
+with the user, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) the client [indicated in its initial request](#request-interact). Unique values such as interaction URIs
 and nonces SHOULD be re-generated and not re-used.
 
 The client MUST present proof of the same [key identified in the initial request](#request-key) by
@@ -1791,12 +1774,10 @@ management API. The client MUST present proof of an appropriate key
 along with the access token.
 
 If the token is sender-constrained (i.e., not a bearer token), it
-MUST be sent [with the appropriate
-binding for the access token](#send-access-token). 
+MUST be sent [with the appropriate binding for the access token](#send-access-token). 
 
 If the token is a bearer token, the client MUST present proof of the
-same [key identified in the initial
-request](#request-key) as described in {{binding-keys}}.
+same [key identified in the initial request](#request-key) as described in {{binding-keys}}.
 
 The AS MUST validate the proof and assure that it is associated with
 either the token itself or the client the token was issued to, as
@@ -1883,8 +1864,7 @@ possible, and return an HTTP 204 response code.
 # Sending Access Tokens {#send-access-token}
 
 The method used to send an access token depends on the value of the
-"proof" parameter in [the access
-token response](#response-token-single).
+"proof" parameter in [the access token response](#response-token-single).
 
 If this value is "bearer", the access token is sent using the HTTP
 Header method defined in {{RFC6750}}.
@@ -2397,8 +2377,7 @@ capabilities
 interaction_methods
 : OPTIONAL. A list of the AS's
           interaction methods. The values of this list correspond to the
-          possible fields in the [interaction
-          section](#request-interact) of the request.
+          possible fields in the [interaction section](#request-interact) of the request.
 
 key_proofs
 : OPTIONAL. A list of the AS's supported key
@@ -2409,14 +2388,12 @@ key_proofs
 sub-ids
 : OPTIONAL. A list of the AS's supported
           identifiers. The values of this list correspond to possible values
-          of the [subject identifier
-          section](#request-subject) of the request.
+          of the [subject identifier section](#request-subject) of the request.
 
 assertions
 : OPTIONAL. A list of the AS's supported
           assertion formats. The values of this list correspond to possible
-          values of the [subject assertion
-          section](#request-subject) of the request.
+          values of the [subject assertion section](#request-subject) of the request.
 
 
 The information returned from this method is for optimization
@@ -2624,8 +2601,7 @@ endpoint MUST be sent in the "as_uri" parameter. The RS MAY
 additionally return a resource reference that the client MAY use in
 its [resource request](#request-resource). This
 resource reference handle SHOULD be sufficient for at least the action
-the client was attempting to take at the RS. The RS MAY use the [dynamic resource handle
-request](#rs-register-resource-handle) to register a new resource handle, or use a handle that
+the client was attempting to take at the RS. The RS MAY use the [dynamic resource handle request](#rs-register-resource-handle) to register a new resource handle, or use a handle that
 has been pre-configured to represent what the AS is protecting. The
 content of this handle is opaque to the RS and the client.
 
@@ -2684,90 +2660,90 @@ sure that it has the permission to do so.
 
 - -09
 
-        - Major document refactoring based on request and response
-          capabilities.
-
-        - Changed from "claims" language to "subject identifier"
-          language.
-
-        - Added "pushback" interaction capability.
-
-        - Removed DIDCOMM interaction (better left to extensions).
-
-        - Excised "transaction" language in favor of "Grant" where
-          appropriate.
-
-        - Added token management URLs.
-
-        - Added separate grant continuation URL to use continuation handle
-          with.
-
-        - Added RS-focused functionality section.
-
-        - Added notion of extending a grant request based on a previous
-          grant.
+    - Major document refactoring based on request and response
+      capabilities.
+    
+    - Changed from "claims" language to "subject identifier"
+      language.
+    
+    - Added "pushback" interaction capability.
+    
+    - Removed DIDCOMM interaction (better left to extensions).
+    
+    - Excised "transaction" language in favor of "Grant" where
+      appropriate.
+    
+    - Added token management URLs.
+    
+    - Added separate grant continuation URL to use continuation handle
+      with.
+    
+    - Added RS-focused functionality section.
+    
+    - Added notion of extending a grant request based on a previous
+      grant.
 
 - -08
 
-        - Added attached JWS signature method.
-
-        - Added discovery methods.
-
+    - Added attached JWS signature method.
+    
+    - Added discovery methods.
+    
 - -07
 
-        - Marked sections as being controlled by a future registry TBD.
+    - Marked sections as being controlled by a future registry TBD.
 
 - -06
 
-        - Added multiple resource requests and multiple access token
-          response.
+    - Added multiple resource requests and multiple access token
+    response.
 
 - -05
 
-        - Added "claims" request and response for identity support.
-
-        - Added "capabilities" request for inline discovery support.
-
+    - Added "claims" request and response for identity support.
+    
+    - Added "capabilities" request for inline discovery support.
+    
 - -04
 
-        - Added crypto agility for callback return hash.
-
-        - Changed "interaction_handle" to "interaction_ref".
-
+    - Added crypto agility for callback return hash.
+    
+    - Changed "interaction_handle" to "interaction_ref".
+    
 - -03
 
-        - Removed "state" in favor of "nonce".
-
-        - Created signed return parameter for front channel return.
-
-        - Changed "client" section to "display" section, as well as
-          associated handle.
-
-        - Changed "key" to "keys".
-
-        - Separated key proofing from key presentation.
-
-        - Separated interaction methods into booleans instead of "type"
-          field.
-
+    - Removed "state" in favor of "nonce".
+    
+    - Created signed return parameter for front channel return.
+    
+    - Changed "client" section to "display" section, as well as
+      associated handle.
+    
+    - Changed "key" to "keys".
+    
+    - Separated key proofing from key presentation.
+    
+    - Separated interaction methods into booleans instead of "type"
+      field.
+    
 - -02
 
-        - Minor editorial cleanups.
+    - Minor editorial cleanups.
 
 - -01
 
-        - Made JSON multimodal for handle requests.
-
-        - Major updates to normative language and references throughout
-          document.
-
-        - Allowed interaction to split between how the user gets to the AS
-          and how the user gets back.
-
+    - Made JSON multimodal for handle requests.
+    
+    - Major updates to normative language and references throughout
+      document.
+    
+    - Allowed interaction to split between how the user gets to the AS
+      and how the user gets back.
+    
 - -00
 
-        - Initial submission.
-    
+    - Initial submission.
+
 # Component Data Models {#data-models}
 
 While different implementations of this protocol will have different
