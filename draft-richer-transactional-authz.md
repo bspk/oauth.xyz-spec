@@ -2592,7 +2592,7 @@ Also, this borrows heavily from UMA 2's "distributed authorization"
 model and, like UMA, might be better suited to an extension than the
 core protocol. ]]
 
-## Requesting a Resources Without a Token {#rs-request-without-token}
+## Requesting a Resources With Insufficient Access {#rs-request-without-token}
 
 If the client calls an RS without an access token, or with an
 invalid access token, the RS MAY respond to the client with an
@@ -2625,9 +2625,25 @@ extension than the core protocol. ]]
 
 # Acknowledgements {#Acknowledgements}
 
-The author would like to thank the feedback of the GNAP working
-group.
-
+The author would like to thank the feedback of the following individuals for their reviews, 
+implementations, and contributions:
+Aaron Parecki,
+Annabelle Backman,
+Dick Hardt,
+Dmitri Zagidulin,
+Dmitry Barinov,
+Fabien Imbault,
+Francis Pouatcha,
+George Fletcher,
+Haardik Haardik,
+Hamid Massaoud,
+Jacky Yuan,
+Joseph Heenan,
+Kathleen Moriarty,
+Mike Jones,
+Mike Varley,
+Nat Sakimura,
+Takahiro Tsuchiya.
 
 # IANA Considerations {#IANA}
 
