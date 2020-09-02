@@ -37,11 +37,37 @@ normative:
     I-D.ietf-oauth-signed-http-request:
     I-D.ietf-oauth-dpop:
     I-D.ietf-secevent-subject-identifiers:
+    OIDC:
+      title: OpenID Connect Core 1.0
+      target: https://openiD.net/specs/openiD-connect-core-1_0.html
+      date: November 8, 2014
+      author:
+        -
+          ins: N. Sakimora
+        -
+          ins: J. Bradley
+        -
+          ins: M. Jones
+        -
+          ins: B. de Medeiros
+        -
+          ins: C. Mortimore
+    OIDC4IA:
+      title: OpenID Connect for Identity Assurance 1.0
+      target: https://openid.net/specs/openid-connect-4-identity-assurance-1_0.html
+      date: October 15, 2019
+      author:
+        -
+          ins: T. Lodderstedt
+        -
+          ins: D. Fett
 
 --- abstract
 
 This document defines a mechanism for delegating authorization to a
-piece of software, and conveying that delegation to the software.
+piece of software, and conveying that delegation to the software. This
+delegation can include access to a set of APIs as well as information
+passed directly to the software. 
 
 This document is input into the GNAP working group and should be
 referred to as "XYZ" to differentiate it from other proposals.
@@ -58,53 +84,432 @@ behalf of a resource owner. The user operating the software may interact
 with the authorization server to authenticate, provide consent, and
 authorize the request.
 
-## Parties
+The process by which the delegation happens is known as a grant, and
+the GNAP protocol allows for the negotiation of the grant process
+over time by multiple parties
 
-The Authorization Server (AS) manages the requested delegations. It
-is defined by its grant endpoint, a single URL that accepts a POST
-request with a JSON payload. The AS MAY also have other endpoints,
+## Roles
+
+The Authorization Server (AS) manages the requested delegations for the RO. 
+The AS issues tokens and directly delegated information to the RC.
+The AS is defined by its grant endpoint, a single URL that accepts a POST
+request with a JSON payload. The AS could also have other endpoints,
 including interaction endpoints and user code endpoints, and these are
-introduced to the RC as needed during the transaction process.
+introduced to the RC as needed during the delegation process. 
 
 The Resource Client (RC, aka "client") requests tokens from the AS
-and uses tokens at the RS.
+and uses tokens at the RS. The RC 
 
 The Resource Server (RS) accepts tokens from the RC and validates
-them (potentially at the AS).
+them (potentially at the AS). The RS serves delegated resources
+on behalf of the RO.
 
 The Resource Owner (RO) authorizes the request from the RC to the
 RS, often interactively at the AS.
 
-The Requesting Party (aka "user") operates the RC and may be the
-same party as the RO.
+The Requesting Party (RQ, aka "user") operates the RC and may be the
+same party as the RO in many circumstances.
 
 ## Sequences {#sequence}
 
-The RC requests access to an RS, and the AS determines that it
-needs to interact with the user directly to get the RO's consent:
+The GNAP protocol can be used in a variety of ways to allow the core
+delegation process to take place. Many portions of this process are
+conditionally present depending on the context of the deployments,
+and not every step in this overview will happen in all circumstances.
 
-1. The RC [creates a grant request and sends it to the AS](#request)
+Note that a connection between roles in this process does not necessarily
+indicate that a specific protocol message is sent across the wire
+between the components fulfilling the roles in question, or that a 
+particular step is required every time. In some circumstances,
+the information needed at a given stage is communicated out-of-band
+or is pre-configured between the components or entities performing
+the roles. For example, one entity can fulfil multiple roles, and so
+explicit communication between the roles is not necessary within the
+protocol flow.
 
-2. The AS [processes the grant request and
-    determines if the RO needs to interact and sends its
-    response](#response)
+~~~
+        +------------+                           +------------+
+        | Requesting | ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ |  Resource  |
+        | Party (RQ) |                           | Owner (RO) |
+        +------------+                           +------------+
+            +                                   +      
+            +                                  +      
+           (A)                                (B)       
+            +                                +        
+            +                               +         
+        +--------+                         +     +------------+
+        |Resource|--------------(1)-------+----->|  Resource  |
+        | Client |                       +       |   Server   |
+        |  (RC)  |       +---------------+       |    (RS)    |
+        |        |--(2)->| Authorization |       |            |
+        |        |<-(3)--|     Server    |       |            |
+        |        |       |      (AS)     |       |            |
+        |        |--(4)->|               |       |            |
+        |        |<-(5)--|               |       |            |
+        |        |       |               |<-(7)--|            |
+        |        |       +---------------+       |            |
+        |        |                               |            |
+        |        |--------------(6)------------->|            |
+        +--------+                               +------------+
 
-3. If interaction is required, the 
-    AS [interacts with the RO](#user-interaction),
-    possibly by directing the RC to send the RO there 
+    Legend
+    + + + indicates a possible interaction with a human
+    ----- indicates an interaction between protocol roles
+    ~ ~ ~ indicates a potential equivalence or communication between roles
+~~~
 
-4. The RC [continues the grant at the AS](#continue-request)
+- (A) The RQ interacts with the RC to indicate a need for resources on
+    behalf of the RO. This could identify the RS the RC needs to call,
+    the resources needed, or the RO that is needed to approve the 
+    request (which may be the same as the RQ).
+    
+- (1) The RC [attempts to call the RS](#rs-request-without-token) to determine 
+    what access is needed.
+    The RS informs the RC that access can be granted through the AS.
 
-5. The AS processes the transaction again, determining that a
-    token can be issued
+- (2) The RC [creates requests access at the AS](#request).
 
-6. The AS issues a token to the RC
+- (3) The AS processes the request and determines what is needed to fulfill
+    the request. The AS sends its [response to the RC](#response).
 
-7. The RC uses the token with the RS
+- (B) If interaction is required, the 
+    AS [interacts with the RO](#user-interaction) to gather authorization.
+    The interactive component of the AS can function
+    using a variety of possible mechanisms including web page
+    redirects, applications, challenge/response protocols, or 
+    other methods.
 
-[[ Editor's note: More sequences and common connections are needed.
-See {{examples}} for more specific examples. ]]
+- (4) The RC [continues the grant at the AS](#continue-request).
 
+- (5) If the AS determines that access can be granted, it returns a 
+    [response to the RC](#response) including an [access token](#response-token) for 
+    calling the RS and any [directly returned information](#response-subject) about the RO.
+
+- (6) The RC [uses the access token](#use-access-token) to call the RS.
+
+- (7) The RS determines if the token is sufficient for the request by
+    examining the token, potentially [calling the AS](#introspection).
+
+The following sections and {{examples}} contain specific guidance on how to use the 
+GNAP protocol in different situations and deployments.
+
+### Redirect-based Interaction {#sequence-redirect}
+
+In this example flow, the RC is a web application that wants access to resources on behalf
+of the current user, who acts as both the requesting party (RQ) and the resource
+owner (RO). Since the RC is capable of directing the user to an arbitrary URL and 
+receiving responses from the user's browser, interaction here is handled through
+front-channel redirects using the user's browser. The RC uses a persistent session
+with the user to ensure the same user that is starting the interaction is the user 
+that returns from the interaction.
+
+~~~
+    +--------+                                  +--------+         +------+
+    |   RC   |                                  |   AS   |         |  RO  |
+    |        |                                  |        |         |  +   |
+    |        |< (1) + Start Session + + + + + + + + + + + + + + + +|  RQ  |
+    |        |                                  |        |         |(User)|
+    |        |--(2)--- Request Access --------->|        |         |      |
+    |        |                                  |        |         |      |
+    |        |<-(3)-- Interaction Needed -------|        |         |      |
+    |        |                                  |        |         |      |
+    |        |+ (4) + + Redirect to Interact + + + + + + + + + + > |      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (5) +>|      |
+    |        |                                  |        |  AuthN  |      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (6) +>|      |
+    |        |                                  |        |  AuthZ  |      |
+    |        |                                  |        |         |      |
+    |        |< (7) + Redirect to Client + + + + + + + + + + + + + |      |
+    |        |                                  |        |         +------+
+    |        |--(8)--- Continue Request ------->|        |
+    |        |                                  |        |
+    |        |<-(9)----- Grant Access ----------|        |
+    |        |                                  |        |
+    +--------+                                  +--------+
+~~~
+
+1. The RC establishes a verifiable session to the user, in the role of the RQ. 
+
+2. The RC [requests access to the resource](#request). The RC indicates that
+    it can [redirect to an arbitrary URL](#request-interact-redirect) and
+    [receive a callback from the browser](#request-interact-callback). The RC
+    stores verification information for its callback in the session created
+    in (1).
+
+3. The AS determines that interaction is needed and [responds](#response) with
+    a [URL to send the user to](#response-interact-redirect) and
+    [information needed to verify the callback](#response-interact-callback) in (7).
+    The AS also includes information the RC will need to 
+    [continue the request](#response-continue) in (8). The AS associates this
+    continuation information with an ongoing request that will be referenced in (4), (6), and (8).
+
+4. The RC stores the verification and continuation information from (3) in the session from (1). The RC
+    then [redirects the user to the URL](#interaction-redirect) given by the AS in (3).
+    The user's browser loads the interaction redirect URL. The AS loads the pending
+    request based on the incoming URL generated in (3).
+
+5. The user authenticates at the AS, taking on the role of the RO.
+
+6. As the RO, the user authorizes the pending request from the RC. 
+
+7. When the AS is done interacting with the user, the AS 
+    [redirects the user back](#interaction-callback) to the
+    RC using the callback URL provided in (2). The callback URL is augmented with
+    an interaction reference that the AS associates with the ongoing 
+    request created in (2) and referenced in (4). The callback URL is also
+    augmented with a hash of the security information provided
+    in (2) and (3). The RC loads the verification information from (2) and (3) from 
+    the session created in (1). The RC [calculates a hash](#interaction-hash)
+    based on this information and continues only if the hash validates.
+    
+8. The RC loads the continuation information from (3) and sends the 
+    interaction reference from (7) in a request to
+    [continue the request](#continue-after-interaction). The AS
+    validates the interaction reference ensuring that the reference
+    is associated with the request being continued. 
+    
+9. If the request has been authorized, the AS grants access to the information
+    in the form of [access tokens](#response-token) and
+    [direct subject information](#response-subject) to the RC.
+
+An example set of protocol messages for this method can be found in {{example-auth-code}}.
+
+### User-code-based Interaction {#sequence-user-code}
+
+In this example flow, the RC is a device that is capable of presenting a short,
+human-readable code to the user and directing the user to enter that code at
+a known URL. The RC is not capable of presenting an arbitrary URL to the user, 
+nor is it capable of accepting incoming HTTP requests from the user's browser.
+The RC polls the AS while it is waiting for the RO to authorize the request.
+The user's interaction is assumed to occur on a secondary device. In this example
+it is assumed that the user is both the RQ and RO, though the user is not assumed
+to be interacting with the RC through the same web browser used for interaction at
+the AS.
+
+~~~
+    +--------+                                  +--------+         +------+
+    |   RC   |                                  |   AS   |         |  RO  |
+    |        |--(1)--- Request Access --------->|        |         |  +   |
+    |        |                                  |        |         |  RQ  |
+    |        |<-(2)-- Interaction Needed -------|        |         |(User)|
+    |        |                                  |        |         |      |
+    |        |+ (3) + + Display User Code + + + + + + + + + + + + >|      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (4) +>|      |
+    |        |                                  |        |  Code   |      |
+    |        |--(8)--- Continue Request (A) --->|        |         |      |
+    |        |                                  |        |<+ (5) +>|      |
+    |        |<-(9)-- Not Yet Granted (Wait) ---|        |  AuthN  |      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (6) +>|      |
+    |        |                                  |        |  AuthZ  |      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (7) +>|      |
+    |        |                                  |        |Completed|      |
+    |        |                                  |        |         |      |
+    |        |--(10)-- Continue Request (B) --->|        |         +------+
+    |        |                                  |        |
+    |        |<-(11)----- Grant Access ---------|        |
+    |        |                                  |        |
+    +--------+                                  +--------+
+~~~
+
+1. The RC [requests access to the resource](#request). The RC indicates that
+    it can [display a user code](#request-interact-usercode).
+
+2. The AS determines that interaction is needed and [responds](#response) with
+    a [user code to communicate to the user](#response-interact-usercode). This
+    could optionally include a URL to direct the user to, but this URL should
+    be static and so could be configured in the RC's documentation.
+    The AS also includes information the RC will need to 
+    [continue the request](#response-continue) in (8) and (10). The AS associates this
+    continuation information with an ongoing request that will be referenced in (4), (6), (8), and (10).
+
+3. The RC stores the continuation information from (2) for use in (8) and (10). The RC
+    then [communicates the code to the user](#interaction-redirect) given by the AS in (2).
+    The user's directs their browser to the user code URL.
+
+4. The user enters the code communicated in (3) to the AS. The AS validates this code
+    against a current request in process.
+
+5. The user authenticates at the AS, taking on the role of the RO.
+
+6. As the RO, the user authorizes the pending request from the RC. 
+
+7. When the AS is done interacting with the user, the AS 
+    indicates to the user that the request has been completed.
+    
+8. Meanwhile, the RC loads the continuation information stored at (3) and 
+    [continues the request](#continue-request). The AS determines which
+    ongoing access request is referenced here and checks its state.
+    
+9. If the access request has not yet been authorized by the RO in (6),
+    the AS responds to the RC to [continue the request](#response-continue)
+    at a future time through additional polling. This response can include
+    refreshed credentials as well as information regarding how long the
+    RC should wait before calling again. The RC replaces its stored
+    continuation information from the previous response (2).
+
+10. The RC continues to [poll the AS](#continue-request) with the new
+    continuation information in (9).
+    
+11. If the request has been authorized, the AS grants access to the information
+    in the form of [access tokens](#response-token) and
+    [direct subject information](#response-subject) to the RC.
+
+An example set of protocol messages for this method can be found in {{example-device}}.
+
+### Asynchronous Authorization {#sequence-async}
+
+In this example flow, the RQ and RO roles are fulfilled by different parties, and
+the RO does not interact with the RC. The AS reaches out asynchronously to the RO 
+during the request process to gather the RO's authorization for the RC's request. 
+The RC polls the AS while it is waiting for the RO to authorize the request.
+
+
+~~~
+    +--------+                                  +--------+         +------+
+    |   RC   |                                  |   AS   |         |  RO  |
+    |        |--(1)--- Request Access --------->|        |         |      |
+    |        |                                  |        |         |      |
+    |        |<-(2)-- Not Yet Granted (Wait) ---|        |         |      |
+    |        |                                  |        |<+ (3) +>|      |
+    |        |                                  |        |  AuthN  |      |
+    |        |--(6)--- Continue Request (A) --->|        |         |      |
+    |        |                                  |        |<+ (4) +>|      |
+    |        |<-(7)-- Not Yet Granted (Wait) ---|        |  AuthZ  |      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (5) +>|      |
+    |        |                                  |        |Completed|      |
+    |        |                                  |        |         |      |
+    |        |--(8)--- Continue Request (B) --->|        |         +------+
+    |        |                                  |        |
+    |        |<-(9)------ Grant Access ---------|        |
+    |        |                                  |        |
+    +--------+                                  +--------+
+~~~
+
+1. The RC [requests access to the resource](#request). The RC does not
+    send any interactions capabilities to the server, indicating that
+    it does not expect to interact with the RO. The RC can also signal
+    which RO it requires authorization from, if known, by using the
+    [user request section](#request-user). 
+
+2. The AS determines that interaction is needed, but the RC cannot interact
+    with the RO. The AS [responds](#response) with the information the RC 
+    will need to [continue the request](#response-continue) in (6) and (8), including
+    a signal that the RC should wait before checking the status of the request again.
+    The AS associates this continuation information with an ongoing request that will be 
+    referenced in (3), (4), (5), (6), and (8).
+
+3. The AS determines which RO to contact based on the request in (1), through a
+    combination of the [user request](#request-user), the 
+    [resources request](#request-resource), and other policy information. The AS
+    contacts the RO and authenticates them.
+
+4. The RO authorizes the pending request from the RC.
+
+5. When the AS is done interacting with the user, the AS 
+    indicates to the user that the request has been completed.
+    
+6. Meanwhile, the RC loads the continuation information stored at (3) and 
+    [continues the request](#continue-request). The AS determines which
+    ongoing access request is referenced here and checks its state.
+    
+7. If the access request has not yet been authorized by the RO in (6),
+    the AS responds to the RC to [continue the request](#response-continue)
+    at a future time through additional polling. This response can include
+    refreshed credentials as well as information regarding how long the
+    RC should wait before calling again. The RC replaces its stored
+    continuation information from the previous response (2).
+
+8. The RC continues to [poll the AS](#continue-request) with the new 
+    continuation information in (7).
+    
+9. If the request has been authorized, the AS grants access to the information
+    in the form of [access tokens](#response-token) and
+    [direct subject information](#response-subject) to the RC.
+
+An example set of protocol messages for this method can be found in {{example-async}}.
+
+### Software-only Authorization {#sequence-no-user}
+
+In this example flow, the AS policy allows the RC to make a call on its own behalf,
+without the need for a RO to be involved at runtime to approve the decision. The
+Since there is no explicit RO, the RC does not interact with an RO.
+
+~~~
+    +--------+                                  +--------+
+    |   RC   |                                  |   AS   |
+    |        |--(1)--- Request Access --------->|        |
+    |        |                                  |        |
+    |        |<-(2)---- Grant Access -----------|        |
+    |        |                                  |        |
+    +--------+                                  +--------+
+~~~
+
+1. The RC [requests access to the resource](#request). The RC does not
+    send any interactions capabilities to the server.
+
+2. The AS determines that the request is been authorized, 
+    the AS grants access to the information
+    in the form of [access tokens](#response-token) and
+    [direct subject information](#response-subject) to the RC.
+
+An example set of protocol messages for this method can be found in {{example-no-user}}.
+
+### Refreshing an Expired Access Token {#sequence-refresh}
+
+In this example flow, the RC receives an access token to access a resource server through
+some valid GNAP process. The RC uses that token at the RS for some time, but eventually
+the access token expires. The RC then gets a new access token by rotating the
+expired access token at the AS using the token's management URL.
+
+~~~
+    +--------+                                          +--------+  
+    |   RC   |                                          |   AS   |
+    |        |--(1)--- Request Access ----------------->|        |
+    |        |                                          |        |
+    |        |<-(2)--- Grant Access --------------------|        |
+    |        |                                          |        |
+    |        |                             +--------+   |        |
+    |        |--(3)--- Access Resource --->|   RS   |   |        | 
+    |        |                             |        |   |        | 
+    |        |<-(4)--- Error Response -----|        |   |        |
+    |        |                             +--------+   |        |
+    |        |                                          |        |
+    |        |--(5)--- Rotate Token ------------------->|        |
+    |        |                                          |        |
+    |        |<-(6)--- Rotated Token -------------------|        |
+    |        |                                          |        |
+    +--------+                                          +--------+
+~~~
+
+1. The RC [requests access to the resource](#request).
+
+2. The AS [grants access to the resource](#response) with an
+    [access token](#response-token) usable at the RS. The access token
+    response includes a token management URI.
+    
+3. The RC [presents the token](#use-access-token) to the RS. The RS 
+    validates the token and returns an appropriate response for the
+    API.
+    
+4. When the access token is expired, the RS responds to the RC with
+    an error.
+    
+5. The RC calls the token management URI returned in (2) to
+    [rotate the access token](#rotate-access-token).
+
+6. The AS validates the rotation request including the appropriateness
+    of the keys presented in (5) and returns a 
+    [new access token](#response-token-single). The response includes
+    a new access token and can also include updated token management 
+    information, which the RC will store in place of the values 
+    returned in (2).
+    
 # Requesting Access {#request}
 
 To start a request, the client sends [JSON](#RFC8259) document with an object as its root. Each
@@ -314,7 +719,7 @@ a JSON object. The names of the JSON object elements are token
 identifiers chosen by the client, and MAY be any valid string. The
 values of the JSON object are JSON arrays representing a single
 access token request, as specified in 
-[requesting a single access token](#response-token-single).
+[requesting a single access token](#request-token-single).
 
 The following non-normative example shows a request for two
 separate access tokens, token1 and token2.
@@ -998,7 +1403,7 @@ value
 proof
 : REQUIRED. The proofing presentation
               mechanism used for presenting this access token to an RS. See
-              [the section on sending access tokens](#send-access-token) for details on possible values to this field and
+              [the section on using access tokens](#using-access-token) for details on possible values to this field and
               their requirements.
 
 manage
@@ -1757,9 +2162,17 @@ request, but the client does not send the hash back to the AS.
 ## Continuing after Tokens are Issued {#continue-after-tokens}
 
 A request MAY be continued even after access tokens have been
-issued, so long as the handle is valid.
-
-
+issued, so long as the handle is valid. The AS MAY respond to such a continuation
+request with new access tokens as described in {{response-token}} based on the client's
+original request. The AS SHOULD revoke existing access tokens.
+If the AS determines that the client can make a further continuation
+request in the future, the AS MUST include a new 
+["continue" response element](#response-continue). The
+returned handle value MUST NOT be the same as that used to make the
+continuation request, and the continuation URI MAY remain the same. If
+the AS does not return a new "continue" response element, the client
+MUST NOT make an additional continuation request. If a client does so,
+the AS MUST return an error.
 
 # Token Management {#token-management}
 
@@ -1774,7 +2187,7 @@ management API. The client MUST present proof of an appropriate key
 along with the access token.
 
 If the token is sender-constrained (i.e., not a bearer token), it
-MUST be sent [with the appropriate binding for the access token](#send-access-token). 
+MUST be sent [with the appropriate binding for the access token](#use-access-token). 
 
 If the token is a bearer token, the client MUST present proof of the
 same [key identified in the initial request](#request-key) as described in {{binding-keys}}.
@@ -1796,7 +2209,11 @@ Authorization: GNAP OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0
 Detached-JWS: eyj0....
 ~~~
 
-
+The AS validates that the token presented is associated with the management
+URL, that the AS issued the token to the given client, and that
+the presented key is appropriate to the token. The access token MAY be 
+expired, and in such cases the AS SHOULD honor the rotation request to 
+the token management URL.
 
 If the token is validated and the key is appropriate for the
 request, the AS will invalidate the current access token associated
@@ -1861,9 +2278,9 @@ possible, and return an HTTP 204 response code.
 
 
 
-# Sending Access Tokens {#send-access-token}
+# Using Access Tokens {#use-access-token}
 
-The method used to send an access token depends on the value of the
+The method the RC uses to send an access token to the RS depends on the value of the
 "proof" parameter in [the access token response](#response-token-single).
 
 If this value is "bearer", the access token is sent using the HTTP
@@ -2645,6 +3062,11 @@ Mike Varley,
 Nat Sakimura,
 Takahiro Tsuchiya.
 
+In particular, the author would like to thank Aaron Parecki and Mike Jones for insights into how
+to integrate identity and authentication systems into the core protocol, and to Dick Hardt for 
+the use cases, diagrams, and insights provided in the XAuth proposal that have been 
+incorporated here.
+
 # IANA Considerations {#IANA}
 
 [[ TBD: There are a lot of items in the document that are expandable
@@ -2673,6 +3095,12 @@ sure that it has the permission to do so.
 --- back
    
 # Document History {#history}
+
+- -10
+
+    - Updated based on Design Team feedback and reviews.
+    - Added acknowledgements list.
+    - Added sequence diagrams and explanations.
 
 - -09
 
