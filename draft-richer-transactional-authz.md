@@ -999,6 +999,10 @@ is opaque to the client.
 
 ~~~
 
+User reference identifiers are not intended to be human-readable
+user identifiers or machine-readable verifiable assertions. For
+either of these, use the regular user request instead.
+
 If the AS does not recognize the user reference, it MUST 
 return an error.
 
@@ -1035,6 +1039,12 @@ knitting to take place. ]]
     }
 ~~~
 
+If the RC does not provide a suitable interaction mechanism, the
+AS cannot contact the RO asynchronously, and the AS determines 
+that interaction is required, then the AS SHOULD return an 
+error since the RC will be unable to complete the
+request without authorization.
+
 ### Redirect to an Arbitrary URL {#request-interact-redirect}
 
 If the client is capable of directing the user to a URL defined
@@ -1052,39 +1062,34 @@ console.
 }
 ~~~
 
-
-
 If this interaction capability is supported for this client and
 request, the AS returns a redirect interaction response {{response-interact-redirect}}.
 
-### Redirect to an Arbitrary Short URL {#request-interact-short}
+#### Redirect to an Arbitrary Shortened URL {#request-interact-short}
 
-If the client can redirect to a shortened URL defined by the AS
+If the client would prefer to redirect to a shortened URL defined by the AS
 at runtime, the client indicates this by sending the "redirect"
-field with the boolean value "true". The means by which the client
-will activate this URL is out of scope of this specification, but
+field with an integer indicating the maximum character length of
+the returned URL. The AS MAY use this value to decide whether to 
+return a shortened form of the response URL. If the AS cannot shorten
+its response URL enough to fit in the requested size, the AS 
+SHOULD return an error. [[ Editor's note: Or maybe just ignore this part 
+of the interaction request? ]]
+
+The means by which the client will activate this URL is out of scope of this specification, but
 common methods include an HTTP redirect, launching a browser on the
 user's device, providing a scannable image encoding, and printing
-out a URL to an interactive console.
+out a URL to an interactive console for the user to copy and paste into a browser.
 
 ~~~
 "interact": {
-   "redirect_short": true
+   "redirect": 255
 }
 ~~~
 
-
-
 If this interaction capability is supported for this client and
 request, the AS returns a redirect interaction response with short
-URL {{response-interact-short}}.
-
-[[ Editor's note: I'm not sold on this structure as there's a lot
-of overlap with the "redirect" capability, so maybe these should
-merge somehow. Also, I'm not sure if we want additional parameters
-in here, like a max length that the client can support? These could
-also be folded into a general "redirect" pattern. ]]
-
+URL {{response-interact-redirect}}.
 
 ### Open an Application-specific URL {#request-interact-app}
 
@@ -1106,11 +1111,12 @@ If this interaction capability is supported for this client and
 request, the AS returns an app interaction response with an app URL
 payload {{response-interact-app}}.
 
-[[ Editor's note: this is also similar to the "redirect" above
+[[ Editor's note: this is similar to the "redirect" above
 today as most apps use captured URLs, but there seems to be a desire
 for splitting the web-based interaction and app-based interaction
 into different URIs. There's also the possibility of wanting more in
-the payload than can be reasonably put into the URL. ]]
+the payload than can be reasonably put into the URL, or at least
+having separate payloads. ]]
 
 ### Receive a Browser-based Callback {#request-interact-callback}
 
@@ -1238,7 +1244,7 @@ SHOULD be different as they have different security properties.
 Note that the means by which the user arrives at the AS is
 declared separately from the user's return using this mechanism.
 
-### Display a Short Code {#request-interact-usercode}
+### Display a Short User Code {#request-interact-usercode}
 
 If the client is capable of displaying or otherwise communicating
 a short, human-entered code to the user, the client indicates this
@@ -1594,31 +1600,6 @@ interactive console.
 the request? Downside: it conflicts with OAuth 2's "redirect_uri"
 concept. ]]
 
-### Redirection to a short URL {#response-interact-short}
-
-If the client indicates that it can [redirect to an arbitrary short URL](#request-interact-short) and the AS supports this capability for the client's
-request, the AS responds with the "short_interaction_url" field,
-which is a string containing the URL to direct the user to. This URL
-MUST be unique for the request and MUST NOT contain any
-security-sensitive information.
-
-~~~
-"short_interaction_url": "https://srv.ex/MXKHQ"
-~~~
-
-
-
-The client sends the user to the URL to interact with the AS. The
-client MUST NOT alter the URL in any way. The means for the client
-to send the user to this URL is out of scope of this specification,
-but common methods include displaying a scannable code, or printing
-out the URL in an interactive console.
-
-[[ Editor's note: should we rename this to "short_redirect" to
-match the request? Downside: it kinda conflicts with OAuth 2's
-"redirect_uri" concept. This also could be folded into an object for
-interaction URIs with multiple options instead. ]]
-
 ### Launch of an application URL {#response-interact-app}
 
 If the client indicates that it can [launch an application URL](#request-interact-app) and
@@ -1690,7 +1671,7 @@ value.
 in an object to match the request? That feels like an overfit to me,
 though. ]]
 
-### Display of a Short Code {#response-interact-usercode}
+### Display of a Short User Code {#response-interact-usercode}
 
 If the client indicates that it can 
 [display a short user-typable code](#request-interact-usercode)
@@ -1722,16 +1703,24 @@ url
 
 ~~~
 
-
-
 The client MUST communicate the "code" to the user in some
 fashion, such as displaying it on a screen or reading it out
-audibly. The client SHOULD also communicate the URL if possible. As
-this interaction capability is designed to facilitate interaction
+audibly. The client SHOULD also communicate the URL if possible. 
+
+The `code` is a one-time-use credential that the AS uses to identify
+the pending request from the RC. When the user enters this code into the
+AS, the AS MUST determine the pending request that it was associated
+with. If the AS does not recognize the entered code, the AS MUST
+display an error to the user.
+
+As this interaction capability is designed to facilitate interaction
 via a secondary device, it is not expected that the client redirect
-the user to the URL. If the client is capable of communicating an
+the user to the URL given here at runtime. Consequently, the URL needs to 
+be stable enough that a client could be statically configured with it, perhaps
+referring the user to the URL via documentation instead of through an
+interactive means. If the client is capable of communicating an
 arbitrary URL to the user, such as through a scannable code, the
-client SHOULD use the ["redirect"](#request-interact-redirect) or ["short_redirect"](#request-interact-short) capabilities
+client can use the ["redirect"](#request-interact-redirect) capability
 for this purpose.
 
 
@@ -1919,8 +1908,8 @@ actions it sees fit, including but not limited to:
 
 ## Interaction at a Redirected URI {#interaction-redirect}
 
-When the user is directed to the AS through the ["interaction_url"](#response-interact-redirect) or ["short_interaction_url"](#response-interact-short)
-capabilities, the AS can interact with the user through their web
+When the user is directed to the AS through the ["interaction_url"](#response-interact-redirect)
+capability, the AS can interact with the user through their web
 browser to authenticate the user as an RO and gather their consent.
 Note that since the client does not add any parameters to the URL, the
 AS MUST determine the grant request being referenced from the URL
@@ -3434,7 +3423,9 @@ Content-type: application/json
 In this scenario, the user does not have access to a web browser on
 the device and must use a secondary device to interact with the AS.
 The client can display a user code or a printable QR code. The client
-prefers a short URL if one is available.
+prefers a short URL if one is available, with a maximum of 255 characters
+in length. The is not able to accept callbacks from the AS and needs to poll
+for updates while waiting for the user to authorize the request.
 
 The client initiates the request to the AS.
 
@@ -3450,8 +3441,7 @@ Detached-JWS: ejy0...
     ],
     "key": "7C7C4AZ9KHRS6X63AJAO",
     "interact": {
-        "redirect": true,
-        "short_redirect": true,
+        "redirect": 255,
         "user_code": true
     }
 }
@@ -3469,8 +3459,7 @@ section because it expects the client to poll for results.
 Content-type: application/json
 
 {
-    "interaction_url": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
-    "short_interaction_url": "https://srv.ex/MXKHQ",
+    "interaction_url": "https://srv.ex/MXKHQ",
     "user_code": {
         "code": "A1BC-3DFF",
         "url": "https://srv.ex/device"
@@ -3487,9 +3476,7 @@ Content-type: application/json
 
 The client saves the response and displays the user code visually
 on its screen along with the static device URL. The client also
-displays the short interaction URL as a QR code to be scanned. The
-client ignores the longer interaction URL because both the long and
-short ones 
+displays the short interaction URL as a QR code to be scanned.
 
 If the user scans the code, they are taken to the interaction
 endpoint and the AS looks up the current pending request based on the
