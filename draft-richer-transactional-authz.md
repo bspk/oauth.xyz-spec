@@ -38,12 +38,12 @@ normative:
     I-D.ietf-oauth-dpop:
     I-D.ietf-secevent-subject-identifiers:
     OIDC:
-      title: OpenID Connect Core 1.0
+      title: OpenID Connect Core 1.0 incorporating errata set 1
       target: https://openiD.net/specs/openiD-connect-core-1_0.html
       date: November 8, 2014
       author:
         -
-          ins: N. Sakimora
+          ins: N. Sakimura
         -
           ins: J. Bradley
         -
@@ -1360,7 +1360,10 @@ under the name `oidc_claims`.
         }
 ~~~
 
-The contents of the `oidc_claims` parameter have the same semantics as they do in OpenID Connect.
+The contents of the `oidc_claims` parameter have the same semantics as they do in OpenID Connect,
+including all extensions such as {{OIDC4IA}}. The AS MUST process the claims object in the same
+way that it would with an OAuth 2 based authorization request.
+
 Note that because this is an independent query object, the `oidc_claims` value can augment or alter
 other portions of the request, namely the `resources` and `subject` fields. This query language uses
 the fields in the top level of the object to indicate the target for any requested claims. For instance, the
@@ -1693,7 +1696,7 @@ interaction reference on the callback URI.
 ### Display of a Short User Code {#response-interact-usercode}
 
 If the client indicates that it can 
-[display a short user-typable code](#request-interact-usercode)
+[display a short user-typeable code](#request-interact-usercode)
 and the AS supports this capability for the client's
 request, the AS responds with a "user_code" field. This field is an
 object that contains the following members.
@@ -3131,6 +3134,7 @@ Kathleen Moriarty,
 Mike Jones,
 Mike Varley,
 Nat Sakimura,
+Takahiko Kawasaki,
 Takahiro Tsuchiya.
 
 In particular, the author would like to thank Aaron Parecki and Mike Jones for insights into how
