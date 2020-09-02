@@ -1341,6 +1341,36 @@ step-up authorization and downscoped authorization, but by explicitly
 creating a new request and not modifying an existing one. What's the
 best guidance for how an AS should process this? ]]
 
+## Requesting OpenID Connect Claims {#request-oidc-claims}
+
+If the client and AS both support OpenID Connect's claims query language as defined in {{OIDC}} Section 5.5,
+the client sends the value of the OpenID Connect `claims` authorization request parameter as a JSON object
+under the name `oidc_claims`.
+
+~~~
+        "oidc_claims": {
+                "id_token" : {
+                    "email"          : { "essential" : true },
+                    "email_verified" : { "essential" : true }
+                },
+                "userinfo" : {
+                    "name"           : { "essential" : true },
+                    "picture"        : null
+                }
+        }
+~~~
+
+The contents of the `oidc_claims` parameter have the same semantics as they do in OpenID Connect.
+Note that because this is an independent query object, the `oidc_claims` value can augment or alter
+other portions of the request, namely the `resources` and `subject` fields. This query language uses
+the fields in the top level of the object to indicate the target for any requested claims. For instance, the
+`userinfo` target indicates that an access token would grant access to the given claims at the
+UserInfo Endpoint, while the `id_token` target indicates that the claims would be returned in an
+ID Token as described in {{response-subject}}.
+
+[[ Editor's note: I'm not a fan of GNAP defining how OIDC would work and would rather that
+work be done by the OIDF. However, I think it is important for discussion to see this kind
+of thing in context with the rest of the protocol, for now. ]]
 
 ## Extending The Grant Request {#request-extending}
 
@@ -3147,6 +3177,7 @@ sure that it has the permission to do so.
     - Collapsed "short_redirect" into regular redirect request.
     - Separated pass-by-reference into subsections.
     - Collapsed "callback" and "pushback" into a single mode-switched method.
+    - Add OIDC Claims request object example.
 
 - -09
 
