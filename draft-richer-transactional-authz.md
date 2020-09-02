@@ -611,6 +611,7 @@ determine which other fields allowed in the object. While it is
 expected that many APIs will have its own properties, a set of
 common properties are defined here. Specific API implementations
 SHOULD NOT re-use these fields with different semantics or syntax.
+
 [[ Editor's note: this will align with OAuth 2 RAR, but the details
 of how it aligns are TBD ]].
 
@@ -668,7 +669,7 @@ and API-specific elements.
 
 ### Requesting Resources By Reference {#request-resource-reference}
 
-Instead of sending an [object describing the requested resource](#resource-request-single),
+Instead of sending an [object describing the requested resource](#request-resource-single),
 a client MAY send a string known to
 the AS or RS representing the access being requested. Each string
 SHOULD correspond to a specific expanded object representation at
@@ -691,7 +692,7 @@ This value is opaque to the client and MAY be any
 valid JSON string, and therefore could include spaces, unicode
 characters, and properly escaped string sequences.
 
-This functionality is similar in practice to OAuth 2's `scope` parameter, where a single string
+This functionality is similar in practice to OAuth 2's `scope` parameter {{RFC6749}}, where a single string
 represents the set of access rights requested by the client. As such, the reference
 string could contain any valid OAuth 2 scope value as in {{example-oauth2}}. Note that the reference
 string here is not bound to the same character restrictions as in OAuth 2's `scope` definition.
@@ -737,7 +738,7 @@ a JSON object. The names of the JSON object elements are token
 identifiers chosen by the client, and MAY be any valid string. The
 values of the JSON object are JSON arrays representing a single
 access token request, as specified in 
-[requesting a single access token](#request-token-single).
+[requesting a single access token](#request-resource-single).
 
 The following non-normative example shows a request for two
 separate access tokens, token1 and token2.
@@ -789,8 +790,8 @@ separate access tokens, token1 and token2.
 
 If the client is requesting information about the current user from
 the AS, it sends a subject element as a JSON object. This object MAY
-contain the following fields (or additional fields defined in [[
-registry TBD ]]).
+contain the following fields (or additional fields defined in 
+[a registry TBD](#IANA)).
 
 sub_ids
 : An array of subject identifier subject types
@@ -798,7 +799,7 @@ sub_ids
 
 assertions
 : An array of requested assertion formats
-            defined by [[ registry TBD ]].
+            defined by [a registry TBD](#IANA).
 
 ~~~
 "subject": {
@@ -854,7 +855,7 @@ cert#256
             per [OAuth-MTLS](#RFC8705) in base64 URL
             encoding.
 
-Additional key types are defined in a [[ registry TBD ]].
+Additional key types are defined in [a registry TBD](#IANA).
 
 [[ Editor's note: we will eventually want to
 have fetchable keys, I would guess. Things like DID for key
@@ -879,7 +880,7 @@ formats using a single proofing mechanism.
 
 The RC MUST prove possession of any presented key by the `proof` mechanism
 associated with the key in the request.  Proof types
-are defined in a [[ registry TBD ]] and an initial set are of methods
+are defined in [a registry TBD](#IANA) and an initial set are of methods
 are described in {{binding-keys}}. [Continuation requests](#continue-request)
 MUST use the same key and proof method as the initial request.
 
@@ -935,7 +936,7 @@ MAY be a symmetric key known to the AS. The client MUST NOT send a
 symmetric key by value, as doing so would be a security violation.
 
 [[ Editor's note: In many ways, passing a key identifier by reference
-is analogous to OAuth 2's "client_id" parameter, especially when
+is analogous to OAuth 2's "client_id" parameter {{RFC6749}}, especially when
 coupled with a confidential client's authentication process. See
 {{example-oauth2}} for an example. ]]
 
@@ -952,7 +953,7 @@ sub_ids
 
 assertions
 : An object containing assertions as values
-            keyed on the assertion type defined by [[ registry TBD ]]. [[
+            keyed on the assertion type defined by [a registry TBD](#IANA). [[
             Editor's note: should this be an array of objects with internal
             typing like the sub_ids? Do we expect more than one assertion per
             user anyway? ]]
@@ -985,8 +986,8 @@ during an interaction step, the AS SHOULD reject the request.
 and provable presence (assertions and a trusted reference handle) in
 the same structure, so perhaps these should be split. ]]
 
-Additional user assertion formats are defined in [[ registry TBD --
-probably the same registry as requesting formats ]].
+Additional user assertion formats are defined in [a registry TBD](#IANA).
+[[ Editor's note: probably the same registry as requesting formats to keep them aligned. ]]
 
 If the AS trusts the client to present user information, it MAY
 decide, based on its policy, to skip interaction with the user, even
@@ -1025,8 +1026,8 @@ There is no preference order specified in this request. An AS MAY
 its capabilities and what is allowed to fulfill the request.
 
 The following sections detail requests for interaction
-capabilities. Additional interaction capabilities are defined in [[ a
-registry TBD ]].
+capabilities. Additional interaction capabilities are defined in 
+[a registry TBD](#IANA).
 
 [[ Editor's note: there need to be [more examples](#examples) that knit together the interaction capabilities into
 common flows, like an authz-code equivalent. But it's important for
@@ -1155,9 +1156,9 @@ nonce
 
 method
 : REQUIRED. The callback method that the AS will use to contact the client.
-              Valid values include `redirect` {{#request-interact-callback-redirect}}
+              Valid values include `redirect` {{request-interact-callback-redirect}}
               and `push` {{request-interact-callback-push}}, with other values
-              defined by [[ a registry TBD ]].
+              defined by [a registry TBD](#IANA).
 
 hash_method
 : OPTIONAL. The hash calculation
@@ -1261,8 +1262,7 @@ in {{interaction-usercode}}.
 
 ### Extending Interaction Capabilities {#request-interact-extend}
 
-Additional interaction capabilities are defined in [[ a registry
-TBD ]].
+Additional interaction capabilities are defined in [a registry TBD](#IANA).
 
 [[ Editor's note: we should have guidance in here about how to
 define other interaction capabilities. There's already interest in
@@ -1298,7 +1298,7 @@ logo_uri
 
 
 
-Additional display fields are defined by [[ a registry TBD. ]]
+Additional display fields are defined by [a registry TBD](#IANA).
 
 The AS SHOULD use these values during interaction with the user.
 The AS MAY restrict display values to specific clients, as identified
@@ -1315,7 +1315,7 @@ top-level field instead of this "display" field. ]]
 If the client supports extension capabilities, it MAY present them
 to the AS in the "capabilities" field. This field is an array of
 strings representing specific extensions and capabilities, as defined
-by [[ a registry TBD ]].
+by [a registry TBD](#IANA).
 
 ~~~
 "capabilities": ["ext1", "ext2"]
@@ -1377,8 +1377,8 @@ of thing in context with the rest of the protocol, for now. ]]
 
 ## Extending The Grant Request {#request-extending}
 
-The request object MAY be extended by registering new items in [[ a
-registry TBD ]]. Extensions SHOULD be orthogonal to other parameters.
+The request object MAY be extended by registering new items in 
+[a registry TBD](#IANA). Extensions SHOULD be orthogonal to other parameters.
 Extensions MUST document any aspects where the
 
 [[ Editor's note: we should have more guidance and examples on what
@@ -1506,7 +1506,7 @@ value
 proof
 : REQUIRED. The proofing presentation
               mechanism used for presenting this access token to an RS. See
-              [the section on using access tokens](#using-access-token) for details on possible values to this field and
+              [the section on using access tokens](#use-access-token) for details on possible values to this field and
               their requirements.
 
 manage
@@ -1641,10 +1641,6 @@ but common methods include an HTTP redirect, launching the system
 browser, displaying a scannable code, or printing out the URL in an
 interactive console.
 
-[[ Editor's note: should we rename this to "redirect" to match
-the request? Downside: it conflicts with OAuth 2's "redirect_uri"
-concept. ]]
-
 ### Launch of an application URL {#response-interact-app}
 
 If the client indicates that it can [launch an application URL](#request-interact-app) and
@@ -1750,7 +1746,7 @@ for this purpose.
 ### Extending Interaction Capability Responses {#interact-extend}
 
 Extensions to this specification can define new interaction
-capability responses in [[ a registry TBD ]].
+capability responses in [a registry TBD](#IANA).
 
 
 
@@ -1771,7 +1767,7 @@ sub_ids
 
 assertions
 : An object containing assertions as values
-            keyed on the assertion type defined by [[ registry TBD ]]. 
+            keyed on the assertion type defined by [a registry TBD](#IANA). 
             [[ Editor's note: should this be an array of objects with internal
             typing like the sub_ids? Do we expect more than one assertion per
             user anyway? ]]
@@ -1798,7 +1794,7 @@ updated_at
 
 
 Extensions to this specification MAY define additional response
-properties in [[ a registry TBD ]].
+properties in [a registry TBD](#IANA).
 
 ## Returning Dynamically-bound Reference Handles {#response-dynamic-handles}
 
@@ -1823,8 +1819,8 @@ the right direction? ]]
 
 All dynamically generated handles are returned as fields in the
 root JSON object of the response. This specification defines the
-following dynamic handle returns, additional handles can be defined [[
-in a registry TBD ]].
+following dynamic handle returns, additional handles can be defined in
+[a registry TBD](#IANA).
 
 
 key_handle
@@ -1874,7 +1870,7 @@ error
 
 
 The error code is one of the following, with additional values
-available in [[ a registry TBD ]]:
+available in [a registry TBD](#IANA):
 
 
 user_denied
@@ -1898,7 +1894,7 @@ exclusive with others in the return? ]]
 ## Extending the Response {#response-extend}
 
 Extensions to this specification MAY define additional fields for
-the grant response in [[ a registry TBD ]].
+the grant response in [a registry TBD](#IANA).
 
 [[ Editor's note: what guidance should we give to designers on
 this? ]]
@@ -2170,7 +2166,7 @@ JSON parameter.
 
 
 The client MAY include other parameters as described here or as
-defined [[ in a registry TBD ]]. 
+defined [a registry TBD](#IANA). 
 
 [[ Editor's note: We probably want to
 allow other parameters, like modifying the resources requested or
@@ -2405,7 +2401,7 @@ oauthpop
 : OAuth PoP key proof authentication header
 
 
-Additional values can be defined by [[ a registry TBD ]].
+Additional values can be defined by [a registry TBD](#IANA).
 
 The keys presented by the RC in the {{request}}
 MUST be proved in all continuation requests
@@ -3153,7 +3149,7 @@ through the use of value registries. ]]
 
 [[ TBD: There are a lot of security considerations to add. ]]
 
-All requests have to be over TLS or equivalent. Many handles act as
+All requests have to be over TLS or equivalent as per {{BCP195}}. Many handles act as
 shared secrets, though they can be combined with a requirement to
 provide proof of a key as well.
 
@@ -3817,7 +3813,7 @@ Content-type: application/json
 ## Applying OAuth 2 Scopes and Client IDs {#example-oauth2}
 
 In this scenario, the client developer has a client_id and set of
-scope values from their OAuth 2 system and wants to apply them to the
+scope values from their OAuth 2 {{RFC6749}} system and wants to apply them to the
 new protocol. Traditionally, the OAuth 2 client developer would put
 their client_id and scope values as parameters into a redirect request
 to the authorization endpoint.
