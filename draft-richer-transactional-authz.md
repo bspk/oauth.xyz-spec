@@ -334,9 +334,12 @@ the AS.
 
 3. The RC stores the continuation information from (2) for use in (8) and (10). The RC
     then [communicates the code to the user](#interaction-redirect) given by the AS in (2).
-    The user's directs their browser to the user code URL.
 
-4. The user enters the code communicated in (3) to the AS. The AS validates this code
+4. The user's directs their browser to the user code URL. This URL is stable and
+    can be communicated via the client's documentation, the AS documentation, or
+    the client software itself. The client does not provide a mechanism to
+    launch the user's browser at this URL.
+    The user enters the code communicated in (3) to the AS. The AS validates this code
     against a current request in process.
 
 5. The user authenticates at the AS, taking on the role of the RO.
@@ -506,10 +509,11 @@ expired access token at the AS using the token's management URL.
     an error.
     
 5. The RC calls the token management URI returned in (2) to
-    [rotate the access token](#rotate-access-token).
+    [rotate the access token](#rotate-access-token). The RC
+    presents the access token as well as the appropriate key.
 
-6. The AS validates the rotation request including the appropriateness
-    of the keys presented in (5) and returns a 
+6. The AS validates the rotation request including the signature
+    and keys presented in (5) and returns a 
     [new access token](#response-token-single). The response includes
     a new access token and can also include updated token management 
     information, which the RC will store in place of the values 
@@ -2247,7 +2251,8 @@ The AS validates that the token presented is associated with the management
 URL, that the AS issued the token to the given client, and that
 the presented key is appropriate to the token. The access token MAY be 
 expired, and in such cases the AS SHOULD honor the rotation request to 
-the token management URL.
+the token management URL. The AS MAY store different lifetimes for
+the use of the token in rotation vs. its use at an RS.
 
 If the token is validated and the key is appropriate for the
 request, the AS will invalidate the current access token associated
@@ -3136,9 +3141,12 @@ sure that it has the permission to do so.
 
 - -10
 
+    - Switched to xml2rfc v3 and markdown source.
     - Updated based on Design Team feedback and reviews.
     - Added acknowledgements list.
     - Added sequence diagrams and explanations.
+    - Collapsed "short_redirect" into regular redirect request.
+    - Separated pass-by-reference into subsections.
 
 - -09
 
@@ -3157,13 +3165,15 @@ sure that it has the permission to do so.
     
     - Added token management URLs.
     
-    - Added separate grant continuation URL to use continuation handle
+    - Added separate continuation URL to use continuation handle
       with.
     
     - Added RS-focused functionality section.
     
     - Added notion of extending a grant request based on a previous
       grant.
+      
+    - Simplified returned handle structures.
 
 - -08
 
