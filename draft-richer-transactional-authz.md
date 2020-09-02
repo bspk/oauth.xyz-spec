@@ -98,7 +98,9 @@ including interaction endpoints and user code endpoints, and these are
 introduced to the RC as needed during the delegation process. 
 
 The Resource Client (RC, aka "client") requests tokens from the AS
-and uses tokens at the RS. The RC 
+and uses tokens at the RS. The RC is identified by its key, and can
+be known to the AS prior to the first request. The AS determines
+which policies apply to a given client.
 
 The Resource Server (RS) accepts tokens from the RC and validates
 them (potentially at the AS). The RS serves delegated resources
@@ -161,7 +163,8 @@ protocol flow.
 - (A) The RQ interacts with the RC to indicate a need for resources on
     behalf of the RO. This could identify the RS the RC needs to call,
     the resources needed, or the RO that is needed to approve the 
-    request (which may be the same as the RQ).
+    request. Note that the RO and RQ are often
+    the same entity in practice.
     
 - (1) The RC [attempts to call the RS](#rs-request-without-token) to determine 
     what access is needed.
@@ -177,7 +180,9 @@ protocol flow.
     The interactive component of the AS can function
     using a variety of possible mechanisms including web page
     redirects, applications, challenge/response protocols, or 
-    other methods.
+    other methods. The RO approves the request for the RC
+    being operated by the RQ. Note that the RO and RQ are often
+    the same entity in practice.
 
 - (4) The RC [continues the grant at the AS](#continue-request).
 
@@ -656,18 +661,19 @@ and API-specific elements.
     ]
 ~~~
 
+### Requesting Resources By Reference {#request-resource-reference}
 
-
-Instead of sending an object, a client MAY send a string known to
+Instead of sending an [object describing the requested resource](#resource-request-single),
+a client MAY send a string known to
 the AS or RS representing the access being requested. Each string
 SHOULD correspond to a specific expanded object representation at
-the AS. [[ Editor's note: we could describe more about how the
+the AS. 
+
+[[ Editor's note: we could describe more about how the
 expansion would work. For example, expand into an object where the
 value of the "type" field is the value of the string. Or we could
 leave it open and flexible, since it's really up to the AS/RS to
-interpret. ]] This value is opaque to the client and MAY be any
-valid JSON string, and therefore could include spaces, unicode
-characters, and properly escaped string sequences.
+interpret. ]] 
 
 ~~~
     "resources": [
@@ -676,7 +682,14 @@ characters, and properly escaped string sequences.
 
 ~~~
 
+This value is opaque to the client and MAY be any
+valid JSON string, and therefore could include spaces, unicode
+characters, and properly escaped string sequences.
 
+This functionality is similar in practice to OAuth 2's `scope` parameter, where a single string
+represents the set of access rights requested by the client. As such, the reference
+string could contain any valid OAuth 2 scope value as in {{example-oauth2}}. Note that the reference
+string here is not bound to the same character restrictions as in OAuth 2's `scope` definition.
 
 A single "resources" array MAY include both object-type and
 string-type resource items.
@@ -789,19 +802,20 @@ assertions
 }
 ~~~
 
-
-
 If the AS knows the identifier for the current user and has
 permission to do so [[ editor's note: from the user's consent or 
 data policy or ... ]], the AS MAY [return the user's information in its response](#response-subject).
 
-The "sub-ids" and "assertions" request fields are independent of
+The "sub_ids" and "assertions" request fields are independent of
 each other, and a returned assertion MAY omit a requested subject
-identifier. [[ Editor's note: we're potentially conflating these two
-fields in the same structure, so perhaps these should be split. ]]
+identifier. 
 
+[[ Editor's note: we're potentially conflating these two
+fields in the same structure, so perhaps these should be split. 
+There's also a difference between user information and 
+authentication event information. ]]
 
-## Identifying the Client {#request-key}
+## Identifying the Client Key {#request-key}
 
 When sending an initial request to the AS, the client MUST identify
 itself by including the key field in the request and by signing the
@@ -835,8 +849,9 @@ cert#256
             per [OAuth-MTLS](#RFC8705) in base64 URL
             encoding.
 
-Additional key types are defined in [[ registry TBD ]]. Proof types
-are defined in a [[ registry TBD ]] and described in {{binding-keys}}. [[ Editor's note: we will eventually want to
+Additional key types are defined in a [[ registry TBD ]].
+
+[[ Editor's note: we will eventually want to
 have fetchable keys, I would guess. Things like DID for key
 identification are going to be important. ]]
 
@@ -857,11 +872,39 @@ formats using a single proofing mechanism.
     }
 ~~~
 
+The RC MUST prove possession of any presented key by the `proof` mechanism
+associated with the key in the request.  Proof types
+are defined in a [[ registry TBD ]] and an initial set are of methods
+are described in {{binding-keys}}. [Continuation requests](#continue-request)
+MUST use the same key and proof method as the initial request.
 
+[[ Editor's note: additional client attestation frameworks will eventually need to be addressed
+here beyond the presentation of the key. For example, the organization the client represents,
+or a family of client software deployed in a cluster, or the posture of the device the client
+is installed on. These all need to be separable from the client's key and the key identifier. ]]
 
-The AS MAY associate policies with the client software identified
-by this key, such as limiting which resources can be requested and
-which interaction methods can be used.
+### Authenticating the Client {#request-key-authenticate}
+
+If the presented key is known to the AS and is associated with a single instance
+of a client, the process of presenting a key and proving possession of that key 
+is usually sufficient to authenticate the client to the AS. The AS MAY associate policies
+with the client software identified by this key, such as limiting which resources
+can be requested and which interaction methods can be used. For example, only
+specific clients with certain known keys might be trusted with access tokens without the
+AS interacting directly with the user as in {{example-no-user}}.
+
+The presentation of a key is of vital importance to the protocol as it allows the
+AS to strongly associate multiple requests from the same RC with each other. This
+value exists whether the AS knows the key ahead of time or not, and as such the
+AS MAY allow for clients to make requests with unknown keys. This pattern allows
+for ephemeral clients, such as single-page applications, and many-instance clients,
+such as mobile applications, to generate their own key pairs and use them within
+the protocol without having to go through a separate registration step.
+The AS MAY limit which capabilities are made available to clients 
+with unknown keys. For example, the AS could have a policy saying that only
+previously-registered clients can request particular resources. 
+
+### Identifying the Client Key By Reference {#request-key-reference}
 
 If the client has a reference for its key, the client MAY send that
 reference handle as a string. The format of this string is opaque to
@@ -876,17 +919,20 @@ the client.
 
 
 If the key is passed by reference, the proofing mechanism
-associated with that key reference MUST also be used. If the AS does
-not recognize the key reference handle, the request MUST be rejected
+associated with that key reference MUST also be used by the client,
+as described in {{binding-keys}}.
+
+If the AS does not recognize the key reference handle, the request MUST be rejected
 with an error.
 
 If the client identifies its key by reference, the referenced key
 MAY be a symmetric key known to the AS. The client MUST NOT send a
-symmetric key by value.
+symmetric key by value, as doing so would be a security violation.
 
-The AS MUST ensure that the key represented by this reference is
-the same key used to sign the request as described in {{binding-keys}}.
-
+[[ Editor's note: In many ways, passing a key identifier by reference
+is analogous to OAuth 2's "client_id" parameter, especially when
+coupled with a confidential client's authentication process. See
+{{example-oauth2}} for an example. ]]
 
 ## Identifying the User {#request-user}
 
@@ -903,7 +949,7 @@ assertions
 : An object containing assertions as values
             keyed on the assertion type defined by [[ registry TBD ]]. [[
             Editor's note: should this be an array of objects with internal
-            typing like the sub-ids? Do we expect more than one assertion per
+            typing like the sub_ids? Do we expect more than one assertion per
             user anyway? ]]
 
 
@@ -928,13 +974,21 @@ AS. [[ editor's note: assertion validation is extremely specific to
 the kind of assertion in place ]]
 
 If the identified user does not match the user present at the AS
-during an interaction step, the AS SHOULD reject the request. [[
-Editor's note: we're potentially conflating identification (sub-ids)
+during an interaction step, the AS SHOULD reject the request. 
+
+[[ Editor's note: we're potentially conflating identification (sub_ids)
 and provable presence (assertions and a trusted reference handle) in
 the same structure, so perhaps these should be split. ]]
 
 Additional user assertion formats are defined in [[ registry TBD --
 probably the same registry as requesting formats ]].
+
+If the AS trusts the client to present user information, it MAY
+decide, based on its policy, to skip interaction with the user, even
+if the client provides one or more interaction capabilities.
+
+
+### Identifying the User by Reference {#request-user-reference}
 
 If the client has a reference for the current user at this AS, the
 client MAY pass that reference as a string. The format of this string
@@ -945,12 +999,8 @@ is opaque to the client.
 
 ~~~
 
-
-
-If the AS trusts the client to present user information, it MAY
-decide, based on its policy, to skip interaction with the user, even
-if the client provides one or more interaction capabilities.
-
+If the AS does not recognize the user reference, it MUST 
+return an error.
 
 ## Interacting with the User {#request-interact}
 
@@ -1251,13 +1301,13 @@ Additional display fields are defined by [[ a registry TBD. ]]
 
 The AS SHOULD use these values during interaction with the user.
 The AS MAY restrict display values to specific clients, as identified
-by their keys.
+by their keys in {{request-key}}.
 
 [[ Editor's note: this might make sense to combine with the "key"
 field, but some classes of more dynamic client vary those fields
-separately. We should also consider things like signed statements for
+separately from the key material. We should also consider things like signed statements for
 client attestation, but that might fit better into a different
-top-level field instead. ]]
+top-level field instead of this "display" field. ]]
 
 ## Declaring Client Capabilities {#request-capabilities}
 
@@ -1711,7 +1761,7 @@ assertions
 : An object containing assertions as values
             keyed on the assertion type defined by [[ registry TBD ]]. [[
             Editor's note: should this be an array of objects with internal
-            typing like the sub-ids? Do we expect more than one assertion per
+            typing like the sub_ids? Do we expect more than one assertion per
             user anyway? ]]
 
 updated_at
@@ -1768,17 +1818,12 @@ in a registry TBD ]].
 key_handle
 : A value used to represent the information
             in the key object that the client can use in a future request, as
-            described in {{request-key}}.
-
-display_handle
-: A value used to represent the
-            information in the display object that the client can use in a
-            future request, as described in {{request-display}}.
+            described in {{request-key-reference}}.
 
 user_handle
 : A value used to represent the current
             user. The client can use in a future request, as described in
-            {{request-user}}.
+            {{request-user-reference}}.
 
 
 This non-normative example shows two handles along side an issued
@@ -2332,7 +2377,7 @@ mtls
 : Mutual TLS certificate verification
 
 dpop
-: OAuth DPoP key proof header
+: OAuth Demonstration of Proof-of-Possession key proof header
 
 httpsig
 : HTTP Signing signature header
@@ -2415,11 +2460,11 @@ contents as a detached JWS object. The HTTP Body is used as the
 payload for purposes of validating the JWS, with no
 transformations.
 
-[[ Editor's note: this is a potentially fragile signature mechanism
+[[ Editor's note: this is a potentially fragile signature mechanism.
+It doesn't protect the method or URL of the request in the signature,
 but it's simple to calculate and useful for body-driven requests, like
 the client to the AS. We might want to remove this in favor of
 general-purpose HTTP signing. ]]
-
 
 ## Attached JWS {#attached-jws}
 
@@ -2477,7 +2522,10 @@ content type to be something other than application/json, and it
 doesn't work against an RS without additional profiling since it
 requires things to be sent in the body. Additionally it is potentially
 fragile like a detached JWS since a multi-tier system could parse the
-payload and pass it downstream with potential transformations. ]]
+payload and pass the parsed payload downstream with potential
+transformations. Furthermore, it doesn't protect the method or
+URL of the request in the signature. We might want to remove this in favor of
+general-purpose HTTP signing. ]]
 
 
 ## Mutual TLS {#mtls}
@@ -2567,7 +2615,7 @@ fHI6kqm3NCyCCTihe2ck5RmCc5l2KBO/vAHF0ihhFOOOby1v6qbPHQcxAU6rEb907
 ## DPoP {#dpop-binding}
 
 This method is indicated by `dpop` in the
-`proof` field. The RC creates a DPoP
+`proof` field. The RC creates a Demonstration of Proof-of-Possession
 signature header as described in {{I-D.ietf-oauth-dpop}}
 section 2.
 
@@ -2630,7 +2678,7 @@ B7_8Wbw4ttzbMS_doJvuDagW8A1Ip3fXFAHtRAcKw7rdI4_Xln66hJxFekpdfWdiPQddQ6Y
 
 [[ Editor's note: this method requires duplication of the key in
 the header and the request body, which is redundant and potentially
-awkward. ]]
+awkward. The signature also doesn't protect the body of the request. ]]
 
 
 ## HTTP Signing {#httpsig-binding}
@@ -2802,7 +2850,7 @@ key_proofs
           values of the `proof` field of the 
           [key section](#request-key) of the request.
 
-sub-ids
+sub_ids
 : OPTIONAL. A list of the AS's supported
           identifiers. The values of this list correspond to possible values
           of the [subject identifier section](#request-subject) of the request.
@@ -3065,7 +3113,8 @@ Takahiro Tsuchiya.
 In particular, the author would like to thank Aaron Parecki and Mike Jones for insights into how
 to integrate identity and authentication systems into the core protocol, and to Dick Hardt for 
 the use cases, diagrams, and insights provided in the XAuth proposal that have been 
-incorporated here.
+incorporated here. The author would also like to thank Mike Varley and the team at SecureKey
+for feedback and development of early versions of the XYZ protocol that fed into this work.
 
 # IANA Considerations {#IANA}
 
@@ -3618,7 +3667,7 @@ Detached-JWS: ejy0...
     ],
     "key": "7C7C4AZ9KHRS6X63AJAO",
     "user": {
-        "sub-ids": [ {
+        "sub_ids": [ {
             "subject_type": "email",
             "email": "user@example.com"
         } ]
