@@ -1415,8 +1415,9 @@ a [callback nonce](#response-interact-callback), and a [continuation handle](#re
 }
 ~~~
 
-In this example, the AS is returning an [access token](#response-token-single),
-a [continuation handle](#response-continue), and a [subject identifier](#response-subject).
+In this example, the AS is returning a bearer [access token](#response-token-single)
+with a management URL and a [subject identifier](#response-subject) in the form of
+an email address.
 
 ~~~
 {
@@ -1424,10 +1425,6 @@ a [continuation handle](#response-continue), and a [subject identifier](#respons
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
         "proof": "bearer",
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L"
-    },
-    "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
-        "uri": "https://server.example.com/continue"
     },
     "subject": {
         "sub_ids": [ {
@@ -1446,8 +1443,7 @@ contains a JSON object with the following properties.
 
 
 handle
-: REQUIRED. A unique reference for the grant
-            request.
+: REQUIRED. A unique reference for continuing the request.
 
 uri
 : REQUIRED. The URI at which the client can make
@@ -2947,9 +2943,6 @@ Content-type: application/json
 
 {
     "active": true,
-    "resources": [
-        "dolphin-metadata", "some other thing"
-    ],
     "resources": [
         "dolphin-metadata", "some other thing"
     ],
