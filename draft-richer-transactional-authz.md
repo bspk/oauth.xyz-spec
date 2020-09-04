@@ -573,7 +573,7 @@ A non-normative example of a grant request is below:
     "capabilities": ["ext1", "ext2"],
     "subject": {
         "sub_ids": ["iss-sub", "email"],
-        "assertions": ["oidc_id_token"]
+        "assertions": ["id_token"]
     }
 }
 ~~~
@@ -798,13 +798,16 @@ sub_ids
             requested for the user, as defined by {{I-D.ietf-secevent-subject-identifiers}}.
 
 assertions
-: An array of requested assertion formats
-            defined by [a registry TBD](#IANA).
+: An array of requested assertion formats. Possible values include
+    `id_token` for an {{OIDC}} ID Token and `saml2` for a SAML 2 assertion. Additional
+    assertion values are defined by [a registry TBD](#IANA).
+    [[ Editor's note: These values are lifted from RFC8693's "token type
+    identifiers" list, but is there a better source?]]
 
 ~~~
 "subject": {
    "sub_ids": [ "iss-sub", "email" ],
-   "assertions": [ "oidc-id-token", "saml" ]
+   "assertions": [ "id_token", "saml2" ]
 }
 ~~~
 
@@ -952,11 +955,15 @@ sub_ids
             user, as defined by {{I-D.ietf-secevent-subject-identifiers}}.
 
 assertions
-: An object containing assertions as values
-            keyed on the assertion type defined by [a registry TBD](#IANA). [[
-            Editor's note: should this be an array of objects with internal
-            typing like the sub_ids? Do we expect more than one assertion per
-            user anyway? ]]
+: An object containing assertions as values keyed on the assertion 
+    type defined by [a registry TBD](#IANA). Possible keys include
+    `id_token` for an {{OIDC}} ID Token and `saml2` for a SAML 2 assertion. Additional
+    assertion values are defined by [a registry TBD](#IANA).
+    [[ Editor's note: These keys are lifted from RFC8693's "token type
+    identifiers" list, but is there a better source?
+    Additionally: should this be an array of objects with internal
+    typing like the sub_ids? Do we expect more than one assertion per
+    user anyway? ]] 
 
 
 ~~~
@@ -966,7 +973,7 @@ assertions
      "email": "user@example.com"
    } ],
    "assertions": {
-     "oidc_id_token": "eyj..."
+     "id_token": "eyj..."
    }
 }
 ~~~
@@ -1345,10 +1352,10 @@ best guidance for how an AS should process this? ]]
 
 If the client and AS both support OpenID Connect's claims query language as defined in {{OIDC}} Section 5.5,
 the client sends the value of the OpenID Connect `claims` authorization request parameter as a JSON object
-under the name `oidc_claims`.
+under the name `claims` in the root of the request.
 
 ~~~
-        "oidc_claims": {
+        "claims": {
                 "id_token" : {
                     "email"          : { "essential" : true },
                     "email_verified" : { "essential" : true }
@@ -1360,11 +1367,12 @@ under the name `oidc_claims`.
         }
 ~~~
 
-The contents of the `oidc_claims` parameter have the same semantics as they do in OpenID Connect,
+The contents of the `claims` parameter have the same semantics as they do in OpenID Connect's
+`claims` authorization request parameter,
 including all extensions such as {{OIDC4IA}}. The AS MUST process the claims object in the same
 way that it would with an OAuth 2 based authorization request.
 
-Note that because this is an independent query object, the `oidc_claims` value can augment or alter
+Note that because this is an independent query object, the `claims` value can augment or alter
 other portions of the request, namely the `resources` and `subject` fields. This query language uses
 the fields in the top level of the object to indicate the target for any requested claims. For instance, the
 `userinfo` target indicates that an access token would grant access to the given claims at the
@@ -1382,8 +1390,7 @@ The request object MAY be extended by registering new items in
 Extensions MUST document any aspects where the
 
 [[ Editor's note: we should have more guidance and examples on what
-possible top-level extensions would look like. Things like an OIDC
-"claims" request or a VC query, for example. ]]
+possible top-level extensions would look like. ]]
 
 
 
@@ -1786,7 +1793,7 @@ updated_at
      "email": "user@example.com",
    } ],
    "assertions": {
-     "oidc_id_token": "eyj..."
+     "id_token": "eyj..."
    }
 }
 ~~~
@@ -3167,6 +3174,9 @@ sure that it has the permission to do so.
 --- back
    
 # Document History {#history}
+
+- -11
+    - Removed oidc_ prefix from several values and used RFC8693 assertion types.
 
 - -10
 
