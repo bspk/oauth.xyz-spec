@@ -2279,7 +2279,7 @@ the token management URL. The AS MAY store different lifetimes for
 the use of the token in rotation vs. its use at an RS.
 
 If the token is validated and the key is appropriate for the
-request, the AS will invalidate the current access token associated
+request, the AS MUST invalidate the current access token associated
 with this URL, if possible, and return a new access token response as
 described in {{response-token-single}}. The value of the
 access token MUST NOT be the same as the current value of the access
@@ -2332,7 +2332,7 @@ Detached-JWS: eyj0....
 
 
 If the token was issued to the client identified by the key, the AS
-will invalidate the current access token associated with this URL, if
+MUST invalidate the current access token associated with this URL, if
 possible, and return an HTTP 204 response code.
 
 ~~~
