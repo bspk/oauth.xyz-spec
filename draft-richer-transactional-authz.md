@@ -100,7 +100,7 @@ introduced to the RC as needed during the delegation process.
 The Resource Client (RC, aka "client") requests tokens from the AS
 and uses tokens at the RS. The RC is identified by its key, and can
 be known to the AS prior to the first request. The AS determines
-which policies apply to a given client.
+which policies apply to a given RC.
 
 The Resource Server (RS) accepts tokens from the RC and validates
 them (potentially at the AS). The RS serves delegated resources
@@ -218,7 +218,7 @@ that returns from the interaction.
     |        |                                  |        |         |      |
     |        |<-(3)-- Interaction Needed -------|        |         |      |
     |        |                                  |        |         |      |
-    |        |+ (4) + + Redirect to Interact + + + + + + + + + + > |      |
+    |        |+ (4) + Redirect for Interaction + + + + + + + + + > |      |
     |        |                                  |        |         |      |
     |        |                                  |        |<+ (5) +>|      |
     |        |                                  |        |  AuthN  |      |
@@ -226,7 +226,7 @@ that returns from the interaction.
     |        |                                  |        |<+ (6) +>|      |
     |        |                                  |        |  AuthZ  |      |
     |        |                                  |        |         |      |
-    |        |< (7) + Redirect to Client + + + + + + + + + + + + + |      |
+    |        |< (7) + Redirect for Continuation + + + + + + + + + +|      |
     |        |                                  |        |         +------+
     |        |--(8)--- Continue Request ------->|        |
     |        |                                  |        |
@@ -281,7 +281,7 @@ that returns from the interaction.
 
 An example set of protocol messages for this method can be found in {{example-auth-code}}.
 
-### User-code-based Interaction {#sequence-user-code}
+### User-code Interaction {#sequence-user-code}
 
 In this example flow, the RC is a device that is capable of presenting a short,
 human-readable code to the user and directing the user to enter that code at
@@ -336,8 +336,8 @@ the AS.
     then [communicates the code to the user](#interaction-redirect) given by the AS in (2).
 
 4. The user's directs their browser to the user code URL. This URL is stable and
-    can be communicated via the client's documentation, the AS documentation, or
-    the client software itself. The client does not provide a mechanism to
+    can be communicated via the RC's documentation, the AS documentation, or
+    the RC software itself. The RC does not provide a mechanism to
     launch the user's browser at this URL.
     The user enters the code communicated in (3) to the AS. The AS validates this code
     against a current request in process.
@@ -521,9 +521,9 @@ expired access token at the AS using the token's management URL.
     
 # Requesting Access {#request}
 
-To start a request, the client sends [JSON](#RFC8259) document with an object as its root. Each
+To start a request, the RC sends [JSON](#RFC8259) document with an object as its root. Each
 member of the request object represents a different aspect of the
-client's request.
+RC's request.
 
 A non-normative example of a grant request is below:
 
@@ -586,26 +586,26 @@ unless otherwise specified by the signature mechanism.
 
 ## Requesting Resources {#request-resource}
 
-If the client is requesting one or more access tokens for the
-purpose of accessing an API, the client MUST include a resources
+If the RC is requesting one or more access tokens for the
+purpose of accessing an API, the RC MUST include a resources
 element. This element MUST be an array (for a single access token) or
 an object (for multiple access tokens), as described in the following
 sections.
 
 ### Requesting a Single Access Token {#request-resource-single}
 
-When requesting a single access token, the client MUST send a
+When requesting a single access token, the RC MUST send a
 resources element containing a JSON array. The elements of the JSON
-array represent rights of access that the client is requesting in
+array represent rights of access that the RC is requesting in
 the access token. The requested access is the sum of all elements
 within the array. These request elements MAY be sent by value as an
 object or by reference as a string. A single resources array MAY
 contain both object and string type resource requests.
 
-The client declares what access it wants to associated with the
+The RC declares what access it wants to associated with the
 resulting access token using objects that describe multiple
 dimensions of access. Each object contains a `type`
-property that determines the type of API that the client is calling.
+property that determines the type of API that the RC is calling.
 The value of this field is under the control of the AS and it MAY
 determine which other fields allowed in the object. While it is
 expected that many APIs will have its own properties, a set of
@@ -670,7 +670,7 @@ and API-specific elements.
 ### Requesting Resources By Reference {#request-resource-reference}
 
 Instead of sending an [object describing the requested resource](#request-resource-single),
-a client MAY send a string known to
+a RC MAY send a string known to
 the AS or RS representing the access being requested. Each string
 SHOULD correspond to a specific expanded object representation at
 the AS. 
@@ -688,12 +688,12 @@ interpret. ]]
 
 ~~~
 
-This value is opaque to the client and MAY be any
+This value is opaque to the RC and MAY be any
 valid JSON string, and therefore could include spaces, unicode
 characters, and properly escaped string sequences.
 
 This functionality is similar in practice to OAuth 2's `scope` parameter {{RFC6749}}, where a single string
-represents the set of access rights requested by the client. As such, the reference
+represents the set of access rights requested by the RC. As such, the reference
 string could contain any valid OAuth 2 scope value as in {{example-oauth2}}. Note that the reference
 string here is not bound to the same character restrictions as in OAuth 2's `scope` definition.
 
@@ -735,13 +735,13 @@ string-type resource items.
 
 When requesting multiple access tokens, the resources element is
 a JSON object. The names of the JSON object elements are token
-identifiers chosen by the client, and MAY be any valid string. The
+identifiers chosen by the RC, and MAY be any valid string. The
 values of the JSON object are JSON arrays representing a single
 access token request, as specified in 
 [requesting a single access token](#request-resource-single).
 
 The following non-normative example shows a request for two
-separate access tokens, token1 and token2.
+separate access tokens, `token1` and `token2`.
 
 ~~~
     "resources": {
@@ -788,14 +788,14 @@ separate access tokens, token1 and token2.
 
 ## Requesting User Information {#request-subject}
 
-If the client is requesting information about the current user from
+If the RC is requesting information about the RO from
 the AS, it sends a subject element as a JSON object. This object MAY
 contain the following fields (or additional fields defined in 
 [a registry TBD](#IANA)).
 
 sub_ids
 : An array of subject identifier subject types
-            requested for the user, as defined by {{I-D.ietf-secevent-subject-identifiers}}.
+            requested for the RO, as defined by {{I-D.ietf-secevent-subject-identifiers}}.
 
 assertions
 : An array of requested assertion formats. Possible values include
@@ -811,9 +811,9 @@ assertions
 }
 ~~~
 
-If the AS knows the identifier for the current user and has
+If the AS knows the identifier for the RO and has
 permission to do so [[ editor's note: from the user's consent or 
-data policy or ... ]], the AS MAY [return the user's information in its response](#response-subject).
+data policy or ... ]], the AS MAY [return the RO's information in its response](#response-subject).
 
 The "sub_ids" and "assertions" request fields are independent of
 each other, and a returned assertion MAY omit a requested subject
@@ -826,7 +826,7 @@ authentication event information. ]]
 
 ## Identifying the Client Key {#request-key}
 
-When sending an initial request to the AS, the client MUST identify
+When sending an initial request to the AS, the RC MUST identify
 itself by including the key field in the request and by signing the
 request as described in {{binding-keys}}. This key MAY be
 sent by value or by reference.
@@ -892,32 +892,32 @@ here beyond the presentation of the key. For example, the organization the clien
 or a family of client software deployed in a cluster, or the posture of the device the client
 is installed on. These all need to be separable from the client's key and the key identifier. ]]
 
-### Authenticating the Client {#request-key-authenticate}
+### Authenticating the RC {#request-key-authenticate}
 
 If the presented key is known to the AS and is associated with a single instance
-of a client, the process of presenting a key and proving possession of that key 
-is usually sufficient to authenticate the client to the AS. The AS MAY associate policies
-with the client software identified by this key, such as limiting which resources
+of the RC software, the process of presenting a key and proving possession of that key 
+is usually sufficient to authenticate the RC to the AS. The AS MAY associate policies
+with the RC software identified by this key, such as limiting which resources
 can be requested and which interaction methods can be used. For example, only
-specific clients with certain known keys might be trusted with access tokens without the
-AS interacting directly with the user as in {{example-no-user}}.
+specific RCs with certain known keys might be trusted with access tokens without the
+AS interacting directly with the RO as in {{example-no-user}}.
 
 The presentation of a key is of vital importance to the protocol as it allows the
 AS to strongly associate multiple requests from the same RC with each other. This
 value exists whether the AS knows the key ahead of time or not, and as such the
-AS MAY allow for clients to make requests with unknown keys. This pattern allows
-for ephemeral clients, such as single-page applications, and many-instance clients,
+AS MAY allow for RCs to make requests with unknown keys. This pattern allows
+for ephemeral RCs, such as single-page applications, and RCs with many individual instances,
 such as mobile applications, to generate their own key pairs and use them within
 the protocol without having to go through a separate registration step.
-The AS MAY limit which capabilities are made available to clients 
+The AS MAY limit which capabilities are made available to RCs 
 with unknown keys. For example, the AS could have a policy saying that only
-previously-registered clients can request particular resources. 
+previously-registered RCs can request particular resources. 
 
 ### Identifying the Client Key By Reference {#request-key-reference}
 
-If the client has a reference for its key, the client MAY send that
+If the RC has a reference for its key, the RC MAY send that
 reference handle as a string. The format of this string is opaque to
-the client.
+the RC.
 
 ~~~
 {
@@ -928,14 +928,14 @@ the client.
 
 
 If the key is passed by reference, the proofing mechanism
-associated with that key reference MUST also be used by the client,
+associated with that key reference MUST also be used by the RC,
 as described in {{binding-keys}}.
 
 If the AS does not recognize the key reference handle, the request MUST be rejected
 with an error.
 
-If the client identifies its key by reference, the referenced key
-MAY be a symmetric key known to the AS. The client MUST NOT send a
+If the RC identifies its key by reference, the referenced key
+MAY be a symmetric key known to the AS. The RC MUST NOT send a
 symmetric key by value, as doing so would be a security violation.
 
 [[ Editor's note: In many ways, passing a key identifier by reference
@@ -945,14 +945,14 @@ coupled with a confidential client's authentication process. See
 
 ## Identifying the User {#request-user}
 
-If the client knows the identity of the current user or one or more
-identifiers for the user, the client MAY send that information to the
-AS in the "user" field. The client MAY pass this information by value
+If the RC knows the identity of the RQ through one or more
+identifiers or assertions, the RC MAY send that information to the
+AS in the "user" field. The RC MAY pass this information by value
 or by reference.
 
 sub_ids
 : An array of subject identifiers for the
-            user, as defined by {{I-D.ietf-secevent-subject-identifiers}}.
+            RQ, as defined by {{I-D.ietf-secevent-subject-identifiers}}.
 
 assertions
 : An object containing assertions as values keyed on the assertion 
@@ -980,32 +980,30 @@ assertions
 
 
 
-Subject identifiers are hints to the AS in determining the current
-user and MUST NOT be taken as declarative statements that a particular
-user is present at the client. Assertions SHOULD be validated by the
+Subject identifiers are hints to the AS in determining the
+RO and MUST NOT be taken as declarative statements that a particular
+RO is present at the RC and acting as the RQ. Assertions SHOULD be validated by the
 AS. [[ editor's note: assertion validation is extremely specific to
 the kind of assertion in place ]]
 
-If the identified user does not match the user present at the AS
+If the identified RQ does not match the RO present at the AS
 during an interaction step, the AS SHOULD reject the request. 
 
 [[ Editor's note: we're potentially conflating identification (sub_ids)
 and provable presence (assertions and a trusted reference handle) in
-the same structure, so perhaps these should be split. ]]
+the same structure, so perhaps these should be split. The security parameters
+are pretty different here. ]]
 
-Additional user assertion formats are defined in [a registry TBD](#IANA).
-[[ Editor's note: probably the same registry as requesting formats to keep them aligned. ]]
-
-If the AS trusts the client to present user information, it MAY
-decide, based on its policy, to skip interaction with the user, even
-if the client provides one or more interaction capabilities.
+If the AS trusts the RC to present verifiable assertions, the AS MAY
+decide, based on its policy, to skip interaction with the RO, even
+if the RC provides one or more interaction capabilities in its request.
 
 
 ### Identifying the User by Reference {#request-user-reference}
 
-If the client has a reference for the current user at this AS, the
-client MAY pass that reference as a string. The format of this string
-is opaque to the client.
+If the RC has a reference for the RQ at this AS, the
+RC MAY pass that reference as a string. The format of this string
+is opaque to the RC.
 
 ~~~
 "user": "XUT2MFM1XBIKJKSDU8QM"
@@ -1021,13 +1019,14 @@ return an error.
 
 ## Interacting with the User {#request-interact}
 
-If the client is capable of driving interaction with the user, the
-client SHOULD declare the means that it can interact using the
+If the RC is capable of driving interaction with the RQ, and the 
+client presumes the RQ can act as the RO, the
+RC SHOULD declare the means that it can interact using the
 "interact" field. This field is a JSON object with keys that declare
-different interaction capabilities. A client MUST NOT declare an
+different interaction capabilities. A RC MUST NOT declare an
 interaction capability it does not support.
 
-The client MAY send multiple capabilities in the same request.
+The RC MAY send multiple capabilities in the same request.
 There is no preference order specified in this request. An AS MAY
 [respond to any, all, or none of the presented interaction capabilities](#response-interact) in a request, depending on
 its capabilities and what is allowed to fulfill the request.
@@ -1061,12 +1060,12 @@ request without authorization.
 
 ### Redirect to an Arbitrary URL {#request-interact-redirect}
 
-If the client is capable of directing the user to a URL defined
-by the AS at runtime, the client indicates this by sending the
+If the RC is capable of directing the RQ to a URL defined
+by the AS at runtime, the RC indicates this by sending the
 "redirect" field with the boolean value "true". The means by which
-the client will activate this URL is out of scope of this
+the RC will activate this URL is out of scope of this
 specification, but common methods include an HTTP redirect,
-launching a browser on the user's device, providing a scannable
+launching a browser on the RQ's device, providing a scannable
 image encoding, and printing out a URL to an interactive
 console.
 
@@ -1076,13 +1075,13 @@ console.
 }
 ~~~
 
-If this interaction capability is supported for this client and
+If this interaction capability is supported for this RC and
 request, the AS returns a redirect interaction response {{response-interact-redirect}}.
 
 #### Redirect to an Arbitrary Shortened URL {#request-interact-short}
 
-If the client would prefer to redirect to a shortened URL defined by the AS
-at runtime, the client indicates this by sending the "redirect"
+If the RC would prefer to redirect to a shortened URL defined by the AS
+at runtime, the RC indicates this by sending the "redirect"
 field with an integer indicating the maximum character length of
 the returned URL. The AS MAY use this value to decide whether to 
 return a shortened form of the response URL. If the AS cannot shorten
@@ -1090,26 +1089,21 @@ its response URL enough to fit in the requested size, the AS
 SHOULD return an error. [[ Editor's note: Or maybe just ignore this part 
 of the interaction request? ]]
 
-The means by which the client will activate this URL is out of scope of this specification, but
-common methods include an HTTP redirect, launching a browser on the
-user's device, providing a scannable image encoding, and printing
-out a URL to an interactive console for the user to copy and paste into a browser.
-
 ~~~
 "interact": {
    "redirect": 255
 }
 ~~~
 
-If this interaction capability is supported for this client and
+If this interaction capability is supported for this RC and
 request, the AS returns a redirect interaction response with short
 URL {{response-interact-redirect}}.
 
 ### Open an Application-specific URL {#request-interact-app}
 
-If the client can open a URL associated with an application on
-the user's device, the client indicates this by sending the "app"
-field with boolean value "true". The means by which the client
+If the RC can open a URL associated with an application on
+the RQ's device, the RC indicates this by sending the "app"
+field with boolean value "true". The means by which the RC
 determines the application to open with this URL are out of scope of
 this specification.
 
@@ -1121,7 +1115,7 @@ this specification.
 
 
 
-If this interaction capability is supported for this client and
+If this interaction capability is supported for this RC and
 request, the AS returns an app interaction response with an app URL
 payload {{response-interact-app}}.
 
@@ -1134,8 +1128,8 @@ having separate payloads. ]]
 
 ### Receive a Callback After Interaction {#request-interact-callback}
 
-If the client is capable of receiving a message from the AS indicating
-that the user has completed their interaction, the client
+If the RC is capable of receiving a message from the AS indicating
+that the RO has completed their interaction, the RC
 indicates this by sending the "callback" field. The value of this
 field is an object containing the following members.
 
@@ -1145,7 +1139,7 @@ uri
               after interaction. This URI MAY be unique per request and MUST
               be hosted by or accessible by the RC. This URI MUST NOT contain
               any fragment component. This URI MUST be protected by HTTPS, be
-              hosted on a server local to the user's browser ("localhost"), or
+              hosted on a server local to the RO's browser ("localhost"), or
               use an application-specific URI scheme. If the RC needs any
               state information to tie to the front channel interaction
               response, it MUST encode that into the callback URI. The
@@ -1162,7 +1156,7 @@ nonce
               request.
 
 method
-: REQUIRED. The callback method that the AS will use to contact the client.
+: REQUIRED. The callback method that the AS will use to contact the RC.
               Valid values include `redirect` {{request-interact-callback-redirect}}
               and `push` {{request-interact-callback-push}}, with other values
               defined by [a registry TBD](#IANA).
@@ -1188,7 +1182,7 @@ hash_method
 }
 ~~~
 
-If this interaction capability is supported for this client and
+If this interaction capability is supported for this RC and
 request, the AS returns a nonce for use in validating 
 [the callback response](#response-interact-callback).
 Requests to the callback URI MUST be processed as described in 
@@ -1196,14 +1190,10 @@ Requests to the callback URI MUST be processed as described in
 presentation of an interaction callback reference as described in
 {{continue-after-interaction}}.
 
-Note that the means by which the user arrives at the AS is
-declared separately from the user's return using this callback
-mechanism.
-
 #### Receive an HTTP Callback Through the Browser {#request-interact-callback-redirect}
 
-A callback `method` value of `redirect` indicates that the client
-will expect a call from the user's browser using the HTTP method
+A callback `method` value of `redirect` indicates that the RC
+will expect a call from the RO's browser using the HTTP method
 GET as described in {{interaction-callback}}.
 
 ~~~
@@ -1219,14 +1209,12 @@ GET as described in {{interaction-callback}}.
 Requests to the callback URI MUST be processed as described in 
 {{interaction-callback}}.
 
-Since the incoming request to the callback URL is from the user's
-browser, the client MUST require the user to be present on the
-connection.
-
+Since the incoming request to the callback URL is from the RO's
+browser, the RC MUST ensure the RQ is present on the request.
 
 #### Receive an HTTP Direct Callback {#request-interact-callback-push}
 
-A callback `method` value of `push` indicates that the client will
+A callback `method` value of `push` indicates that the RC will
 expect a call from the AS directly using the HTTP method POST
 as described in {{interaction-pushback}}.
 
@@ -1240,17 +1228,17 @@ as described in {{interaction-pushback}}.
 }
 ~~~
 
-Requests to the pushback URI MUST be processed as described in 
+Requests to the callback URI MUST be processed as described in 
 {{interaction-pushback}}.
 
-Since the incoming request to the pushback URL is from the AS and
-not from the user's browser, the client MUST NOT require the user to
+Since the incoming request to the callback URL is from the AS and
+not from the RO's browser, the RC MUST NOT require the RQ to
 be present. 
 
 ### Display a Short User Code {#request-interact-usercode}
 
-If the client is capable of displaying or otherwise communicating
-a short, human-entered code to the user, the client indicates this
+If the RC is capable of displaying or otherwise communicating
+a short, human-entered code to the RO, the RC indicates this
 by sending the "user_code" field with the boolean value "true". This
 code is to be entered at a static URL that does not change at
 runtime.
@@ -1263,7 +1251,7 @@ runtime.
 
 
 
-If this interaction capability is supported for this client and
+If this interaction capability is supported for this RC and
 request, the AS returns a user code and interaction URL as specified
 in {{interaction-usercode}}.
 
@@ -1277,12 +1265,12 @@ defining message-based protocols and challenge-response protocols,
 for example. ]]
 
 
-## Providing Displayable Client Information {#request-display}
+## Providing Displayable RC Information {#request-display}
 
-If the client has additional information to display to the user
+If the RC has additional information to display to the RO
 during any interactions at the AS, it MAY send that information in the
 "display" field. This field is a JSON object that declares information
-to present to the user during any interactive sequences.
+to present to the RO during any interactive sequences.
 
 
 name
@@ -1307,8 +1295,8 @@ logo_uri
 
 Additional display fields are defined by [a registry TBD](#IANA).
 
-The AS SHOULD use these values during interaction with the user.
-The AS MAY restrict display values to specific clients, as identified
+The AS SHOULD use these values during interaction with the RO.
+The AS MAY restrict display values to specific RCs, as identified
 by their keys in {{request-key}}.
 
 [[ Editor's note: this might make sense to combine with the "key"
@@ -1317,9 +1305,9 @@ separately from the key material. We should also consider things like signed sta
 client attestation, but that might fit better into a different
 top-level field instead of this "display" field. ]]
 
-## Declaring Client Capabilities {#request-capabilities}
+## Declaring RC Capabilities {#request-capabilities}
 
-If the client supports extension capabilities, it MAY present them
+If the RC supports extension capabilities, it MAY present them
 to the AS in the "capabilities" field. This field is an array of
 strings representing specific extensions and capabilities, as defined
 by [a registry TBD](#IANA).
@@ -1330,7 +1318,7 @@ by [a registry TBD](#IANA).
 
 ## Referencing an Existing Grant Request {#request-existing}
 
-If the client has a reference handle from a previously granted
+If the RC has a reference handle from a previously granted
 request, it MAY send that reference in the "reference" field. This
 field is a single string.
 
@@ -1350,8 +1338,8 @@ best guidance for how an AS should process this? ]]
 
 ## Requesting OpenID Connect Claims {#request-oidc-claims}
 
-If the client and AS both support OpenID Connect's claims query language as defined in {{OIDC}} Section 5.5,
-the client sends the value of the OpenID Connect `claims` authorization request parameter as a JSON object
+If the RC and AS both support OpenID Connect's claims query language as defined in {{OIDC}} Section 5.5,
+the RC sends the value of the OpenID Connect `claims` authorization request parameter as a JSON object
 under the name `claims` in the root of the request.
 
 ~~~
@@ -1396,7 +1384,7 @@ possible top-level extensions would look like. ]]
 
 # Grant Response {#response}
 
-In response to a client's request, the AS responds with a JSON object
+In response to a RC's request, the AS responds with a JSON object
 as the HTTP entity body.
 
 In this example, the AS is returning an [interaction URL](#response-interact-redirect),
@@ -1446,18 +1434,18 @@ handle
 : REQUIRED. A unique reference for continuing the request.
 
 uri
-: REQUIRED. The URI at which the client can make
-            continuation requests. This URI MAY vary per client or ongoing
+: REQUIRED. The URI at which the RC can make
+            continuation requests. This URI MAY vary per RC or ongoing
             request, or MAY be stable at the AS.
 
 wait
 : RECOMMENDED. The amount of time in integer
-            seconds the client SHOULD wait after receiving this continuation
+            seconds the RC SHOULD wait after receiving this continuation
             handle and calling the URI.
 
 expires_in
 : OPTIONAL. The number of seconds in which
-            the handle will expire. The client MUST NOT use the handle past
+            the handle will expire. The RC MUST NOT use the handle past
             this time. The handle MAY be revoked at any point prior to its
             expiration.
 
@@ -1474,10 +1462,11 @@ expires_in
 
 
 
-The client can use the values of this field as described in {{continue-request}}.
+The RC can use the values of this field to continue the
+request as described in {{continue-request}}.
 
 This field SHOULD be returned when interaction is expected, to
-allow the client to follow up after interaction has been
+allow the RC to follow up after interaction has been
 concluded.
 
 
@@ -1494,7 +1483,7 @@ something less error-prone. ]]
 
 ### Single Access Token {#response-token-single}
 
-If the client has requested a single access token and the AS has
+If the RC has requested a single access token and the AS has
 granted that access token, the AS responds with the "access_token"
 field. The value of this field is an object with the following
 properties.
@@ -1502,7 +1491,7 @@ properties.
 
 value
 : REQUIRED. The value of the access token as a
-              string. The value is opaque to the client. The value SHOULD be
+              string. The value is opaque to the RC. The value SHOULD be
               limited to ASCII characters to facilitate transmission over HTTP
               headers and elements without additional encoding.
 
@@ -1514,7 +1503,7 @@ proof
 
 manage
 : OPTIONAL. The management URI for this
-              access token. If provided, the client MAY manage its access
+              access token. If provided, the RC MAY manage its access
               token as described in [managing an access token lifecycle](#token-management). This URI MUST NOT include the
               access token value and MAY be different for each access
               token.
@@ -1524,11 +1513,11 @@ resources
               associated with this access token, as defined in 
               [requesting resource access](#response-token-single). If included, this MUST reflect the rights
               associated with the issued access token. These rights MAY vary
-              from what was requested by the client.
+              from what was requested by the RC.
 
 expires_in
 : OPTIONAL. The number of seconds in
-              which the access will expire. The client MUST NOT use the access
+              which the access will expire. The RC MUST NOT use the access
               token past this time. The access token MAY be revoked at any
               point prior to its expiration.
 
@@ -1572,11 +1561,11 @@ key
 
 ### Multiple Access Tokens {#response-token-multiple}
 
-If the client has requested multiple access tokens and the AS has
+If the RC has requested multiple access tokens and the AS has
 granted at least one of them, the AS responds with the
 "multiple_access_tokens" field. The value of this field is a JSON
 object, and the property names correspond to the token identifiers
-chosen by the client in the [multiple access token request ](#request-resource-multiple). The values of the properties of this object are access
+chosen by the RC in the [multiple access token request ](#request-resource-multiple). The values of the properties of this object are access
 tokens as described in {{response-token-single}}.
 
 ~~~
@@ -1596,13 +1585,13 @@ tokens as described in {{response-token-single}}.
 
 
 Each access token corresponds to the named resources arrays in
-the client's request. The AS MAY not issue one or more of the
+the RC's request. The AS MAY not issue one or more of the
 requested access tokens. In such cases all of the issued access
 tokens are included without the omitted token. The multiple access
 token response MUST be used when multiple access tokens are
 requested, even if only one access token is issued.
 
-If the client [requested a single access token](#request-resource-single), the AS MUST NOT respond with multiple
+If the RC [requested a single access token](#request-resource-single), the AS MUST NOT respond with multiple
 access tokens.
 
 Each access token MAY have different proofing mechanisms. If
@@ -1612,20 +1601,20 @@ used, each access token MUST have different management URIs.
 
 ## Interaction Capabilities {#response-interact}
 
-If the client has indicated a [capability to interact with the user in its request](#request-interact), and the AS has determined that interaction is both
-supported and necessary, the AS responds to the client with any of the
+If the RC has indicated a [capability to interact with the RO in its request](#request-interact), and the AS has determined that interaction is both
+supported and necessary, the AS responds to the RC with any of the
 following values in the `interact` field of the response. There is no preference order for interaction
-capabilities in the response, and it is up to the client to determine
+capabilities in the response, and it is up to the RC to determine
 which ones to use.
 
 The AS MUST NOT respond with any interaction capability that the
-client did not indicate in its request.
+RC did not indicate in its request.
 
 ### Redirection to an arbitrary URL {#response-interact-redirect}
 
-If the client indicates that it can [redirect to an arbitrary URL](#request-interact-redirect) and the AS supports this capability for the client's
+If the RC indicates that it can [redirect to an arbitrary URL](#request-interact-redirect) and the AS supports this capability for the RC's
 request, the AS responds with the "redirect" field, which is
-a string containing the URL to direct the user to. This URL MUST be
+a string containing the URL to direct the RQ to. This URL MUST be
 unique for the request and MUST NOT contain any security-sensitive
 information.
 
@@ -1637,19 +1626,19 @@ information.
 
 
 
-The client sends the user to the URL to interact with the AS. The
-client MUST NOT alter the URL in any way. The means for the client
-to send the user to this URL is out of scope of this specification,
+The RC sends the RQ to the URL to interact with the AS. The
+RC MUST NOT alter the URL in any way. The means for the RC
+to send the RQ to this URL is out of scope of this specification,
 but common methods include an HTTP redirect, launching the system
 browser, displaying a scannable code, or printing out the URL in an
 interactive console.
 
 ### Launch of an application URL {#response-interact-app}
 
-If the client indicates that it can [launch an application URL](#request-interact-app) and
-the AS supports this capability for the client's request, the AS
+If the RC indicates that it can [launch an application URL](#request-interact-app) and
+the AS supports this capability for the RC's request, the AS
 responds with the "app" field, which is a string containing the URL
-to direct the user to. This URL MUST be unique for the request and
+to direct the RQ to. This URL MUST be unique for the request and
 MUST NOT contain any security-sensitive information.
 
 ~~~
@@ -1660,22 +1649,23 @@ MUST NOT contain any security-sensitive information.
 
 
 
-The client launches the URL as appropriate on its platform, and
-the means for the client to launch this URL is out of scope of this
-specification. The client MUST NOT alter the URL in any way. The
-client MAY attempt to detect if an installed application will
-service the URL being sent.
+The RC launches the URL as appropriate on its platform, and
+the means for the RC to launch this URL is out of scope of this
+specification. The RC MUST NOT alter the URL in any way. The
+RC MAY attempt to detect if an installed application will
+service the URL being sent before attempting to launch the
+application URL.
 
 [[ Editor's note: This will probably need to be expanded to an
 object to account for other parameters needed in app2app use cases,
 like addresses for distributed storage systems, server keys, and the
 like. Details TBD as people build this out. ]]
 
-### Callback to a Client URL {#response-interact-callback}
+### Callback to URL {#response-interact-callback}
 
-If the client indicates that it can [receive a post-interaction callback on a URL](#request-interact-callback) and the AS supports this capability for the
-client's request, the AS responds with a "callback" field containing a nonce
-that the client will use in validating the callback as defined in
+If the RC indicates that it can [receive a post-interaction callback on a URL](#request-interact-callback) and the AS supports this capability for the
+RC's request, the AS responds with a "callback" field containing a nonce
+that the RC will use in validating the callback as defined in
 {{interaction-callback}}.
 
 ~~~
@@ -1684,19 +1674,22 @@ that the client will use in validating the callback as defined in
     }
 ~~~
 
-When the user completes interaction at the AS, the AS MUST call the
-client's callback URL using the method indicated in the
+[[ Editor's note: This is fairly parallel to the request but it kinda
+hides the fact that this is a nonce from the AS, not the client. ]]
+
+When the RO completes interaction at the AS, the AS MUST call the
+RC's callback URL using the method indicated in the
 [callback request](#request-interact-callback) as described in {{interaction-callback}}.
 
-If the AS returns a "callback" nonce, the client MUST NOT
+If the AS returns a "callback" nonce, the RC MUST NOT
 continue a grant request before it receives the associated
 interaction reference on the callback URI.
 
 ### Display of a Short User Code {#response-interact-usercode}
 
-If the client indicates that it can 
+If the RC indicates that it can 
 [display a short user-typeable code](#request-interact-usercode)
-and the AS supports this capability for the client's
+and the AS supports this capability for the RC's
 request, the AS responds with a "user_code" field. This field is an
 object that contains the following members.
 
@@ -1713,7 +1706,7 @@ code
 url
 : RECOMMENDED. The interaction URL that the RC
               will direct the RO to. This URL MUST be stable at the AS such
-              that clients can be statically configured with it.
+              that RCs can be statically configured with it.
 
 
 ~~~
@@ -1725,25 +1718,26 @@ url
     }
 ~~~
 
-The client MUST communicate the "code" to the user in some
+The RC MUST communicate the "code" to the RQ in some
 fashion, such as displaying it on a screen or reading it out
-audibly. The client SHOULD also communicate the URL if possible. 
-
-The `code` is a one-time-use credential that the AS uses to identify
-the pending request from the RC. When the user enters this code into the
+audibly. The `code` is a one-time-use credential that the AS uses to identify
+the pending request from the RC. When the RO enters this code into the
 AS, the AS MUST determine the pending request that it was associated
 with. If the AS does not recognize the entered code, the AS MUST
-display an error to the user.
+display an error to the RO.
 
+The RC SHOULD also communicate the URL if possible
+to facilitate user interaction, but since the URL should be stable,
+the RC should be able to safely decide to not display this value.
 As this interaction capability is designed to facilitate interaction
-via a secondary device, it is not expected that the client redirect
-the user to the URL given here at runtime. Consequently, the URL needs to 
-be stable enough that a client could be statically configured with it, perhaps
-referring the user to the URL via documentation instead of through an
-interactive means. If the client is capable of communicating an
-arbitrary URL to the user, such as through a scannable code, the
-client can use the ["redirect"](#request-interact-redirect) capability
-for this purpose.
+via a secondary device, it is not expected that the RC redirect
+the RQ to the URL given here at runtime. Consequently, the URL needs to 
+be stable enough that a RC could be statically configured with it, perhaps
+referring the RQ to the URL via documentation instead of through an
+interactive means. If the RC is capable of communicating an
+arbitrary URL to the RQ, such as through a scannable code, the
+RC can use the ["redirect"](#request-interact-redirect) capability
+for this purpose instead of or in addition to the user code capability.
 
 
 ### Extending Interaction Capability Responses {#interact-extend}
@@ -1755,15 +1749,15 @@ capability responses in [a registry TBD](#IANA).
 
 ## Returning User Information {#response-subject}
 
-If information about the current user is requested and the AS
-grants the client access to that data, the AS returns the approved
+If information about the RO is requested and the AS
+grants the RC access to that data, the AS returns the approved
 information in the "subject" response field. This field is an object
 with the following OPTIONAL properties.
 
 
 sub_ids
 : An array of subject identifiers for the
-            user, as defined by 
+            RO, as defined by 
             {{I-D.ietf-secevent-subject-identifiers}}. [[ Editor's
             note: privacy considerations are needed around returning
             identifiers. ]]
@@ -1777,7 +1771,7 @@ assertions
 
 updated_at
 : Timestamp in integer seconds indicating
-            when the identified account was last updated. The client MAY use
+            when the identified account was last updated. The RC MAY use
             this value to determine if it needs to request updated profile
             information through an identity API.
 
@@ -1801,20 +1795,20 @@ properties in [a registry TBD](#IANA).
 
 ## Returning Dynamically-bound Reference Handles {#response-dynamic-handles}
 
-Many parts of the client's request can be passed as either a value
-or a reference. Some of these references, such as for the client's
+Many parts of the RC's request can be passed as either a value
+or a reference. Some of these references, such as for the RC's
 keys or the resources, can sometimes be managed statically through an
 admin console or developer portal provided by the AS or RS. If
 desired, the AS MAY also generate and return some of these references
-dynamically to the client in its response to facilitate multiple
-interactions with the same software. The client SHOULD use these
+dynamically to the RC in its response to facilitate multiple
+interactions with the same software. The RC SHOULD use these
 references in future requests in lieu of sending the associated data
 value. These handles are intended to be used on future requests.
 
 Dynamically generated handles are string values that MUST be
-protected by the client as secrets. Handle values MUST be unguessable
+protected by the RC as secrets. Handle values MUST be unguessable
 and MUST NOT contain any sensitive information. Handle values are
-opaque to the client. [[ Editor's note: these used to be objects to
+opaque to the RC. [[ Editor's note: these used to be objects to
 allow for expansion to future elements, like a management URI or
 different presentation types or expiration, but those weren't used in
 practice. Is that desirable anymore or is collapsing them like this
@@ -1828,12 +1822,12 @@ following dynamic handle returns, additional handles can be defined in
 
 key_handle
 : A value used to represent the information
-            in the key object that the client can use in a future request, as
+            in the key object that the RC can use in a future request, as
             described in {{request-key-reference}}.
 
 user_handle
 : A value used to represent the current
-            user. The client can use in a future request, as described in
+            user. The RC can use in a future request, as described in
             {{request-user-reference}}.
 
 
@@ -1906,9 +1900,9 @@ this? ]]
 
 # Interaction at the AS {#user-interaction}
 
-If the client [indicates that it is capable of driving interaction with the user in its request](#request-interact), and
+If the RC [indicates that it is capable of driving interaction with the RO in its request](#request-interact), and
 the AS determines that interaction is required and responds to one or
-more of the client's interaction capabilities, the client SHOULD
+more of the RC's interaction capabilities, the RC SHOULD
 initiate one of the returned 
 [interaction capabilities in the response](#response-interact).
 
@@ -1930,14 +1924,14 @@ the UX, I think. ]]
 
 ## Interaction at a Redirected URI {#interaction-redirect}
 
-When the user is directed to the AS through the ["redirect"](#response-interact-redirect)
-capability, the AS can interact with the user through their web
+When the RO is directed to the AS through the ["redirect"](#response-interact-redirect)
+capability, the AS can interact with the RO through their web
 browser to authenticate the user as an RO and gather their consent.
-Note that since the client does not add any parameters to the URL, the
+Note that since the RC does not add any parameters to the URL, the
 AS MUST determine the grant request being referenced from the URL
 value itself. If the URL cannot be associated with a currently active
-request, the AS MUST display an error to the user and MUST NOT attempt
-to redirect the user back to any client.
+request, the AS MUST display an error to the RO and MUST NOT attempt
+to redirect the RO back to any RC.
 
 The interaction URL MUST be reachable from the RO's browser, though
 note that the RO MAY open the URL on a separate device from the RC
@@ -1946,14 +1940,14 @@ request, and MUST be protected by HTTPS or equivalent means.
 
 ## Interaction at the User Code URI {#interaction-usercode}
 
-When the user is directed to the AS through the ["user_code"](#response-interact-usercode) capability, the
-AS can interact with the user through their web browser to collect the
+When the RO is directed to the AS through the ["user_code"](#response-interact-usercode) capability, the
+AS can interact with the RO through their web browser to collect the
 user code, authenticate the user as an RO, and gather their consent.
 Note that since the URL itself is static, the AS MUST determine the
 grant request being referenced from the user code value itself. If the
 user code cannot be associated with a currently active request, the AS
-MUST display an error to the user and MUST NOT attempt to redirect the
-user back to any client.
+MUST display an error to the RO and MUST NOT attempt to redirect the
+RO back to any RC.
 
 The user code URL MUST be reachable from the RO's browser, though
 note that the RO MAY open the URL on a separate device from the RC
@@ -1962,9 +1956,9 @@ and MUST be protected by HTTPS or equivalent means.
 
 ## Interaction through an Application URI {#interaction-app}
 
-When the user successfully launches an application through the
+When the RC successfully launches an application through the
 ["app" capability](#response-interact-app), the AS
-interacts with the user through that application to authenticate the
+interacts with the RO through that application to authenticate the
 user as the RO and gather their consent. The details of this
 interaction are out of scope for this specification.
 
@@ -1974,13 +1968,13 @@ request? ]]
 
 ## Post-Interaction Completion {#interaction-finalize}
 
-Upon completing an interaction with the user, if a ["callback"](#response-interact-callback) capability is
+Upon completing an interaction with the RO, if a ["callback"](#response-interact-callback) capability is
 available with the current request, the AS MUST follow the appropriate
-method at the end of interaction to allow the client to continue. If
-neither capability is available, the AS SHOULD instruct the user to
-return to their client software upon completion. Note that these steps
-still take place in most error cases, such as when the user has denied
-access. This allows the client to potentially recover from the error
+method at the end of interaction to allow the RC to continue. If
+neither capability is available, the AS SHOULD instruct the RO to
+return to their RC software upon completion. Note that these steps
+still take place in most error cases, such as when the RO has denied
+access. This allows the RC to potentially recover from the error
 state without restarting. 
 
 [[ Editor's note: there might be some other kind of push-based
@@ -1994,7 +1988,7 @@ potential session fixation attack vector that the client is trying to
 and able to avoid. ]]
 
 The AS MUST calculate a hash value as described in 
-{{interaction-hash}}. The client will use this value to
+{{interaction-hash}}. The RC will use this value to
 validate the return call from the AS.
 
 The AS MUST create an interaction reference and associate that
@@ -2006,15 +2000,15 @@ The AS then MUST send the hash and interaction reference based on
 the interaction finalization capability as described in the following
 sections.
 
-### Completing Interaction with a Callback URI {#interaction-callback}
+### Completing Interaction with a Browser Redirect to the Callback URI {#interaction-callback}
 
 When using the ["callback" interaction capability](#response-interact-callback) with the `redirect` method,
-the AS signals to the client that interaction is
-complete and the request can be continued by directing the user (in
-their browser) back to the client's callback URL sent in [the callback request](#request-interact-callback-redirect).
+the AS signals to the RC that interaction is
+complete and the request can be continued by directing the RO (in
+their browser) back to the RC's callback URL sent in [the callback request](#request-interact-callback-redirect).
 
 The AS secures this callback by adding the hash and interaction
-reference as query parameters to the client's callback URL.
+reference as query parameters to the RC's callback URL.
 
 
 hash
@@ -2026,9 +2020,9 @@ interact_ref
               generated for this interaction.
 
 
-The means of directing the user to this URL are outside the scope
+The means of directing the RO to this URL are outside the scope
 of this specification, but common options include redirecting the
-user from a web page and launching the system browser with the
+RO from a web page and launching the system browser with the
 target URL.
 
 ~~~
@@ -2039,20 +2033,20 @@ https://client.example.net/return/123455
 
 
 
-When receiving the request, the client MUST parse the query
+When receiving the request, the RC MUST parse the query
 parameters to calculate and validate the hash value as described in
-{{interaction-hash}}. If the hash validates, the client
+{{interaction-hash}}. If the hash validates, the RC
 sends a continuation request to the AS as described in 
 {{continue-after-interaction}} using the interaction
 reference value received here.
 
-### Completing Interaction with a Pushback URI {#interaction-pushback}
+### Completing Interaction with a Direct HTTP Request Callback {#interaction-pushback}
 
 When using the 
 ["callback" interaction capability](#response-interact-callback) with the `push` method,
-the AS signals to the client that interaction is
+the AS signals to the RC that interaction is
 complete and the request can be continued by sending an HTTP POST
-request to the client's callback URL sent in [the callback request](#request-interact-callback-push).
+request to the RC's callback URL sent in [the callback request](#request-interact-callback-push).
 
 The entity message body is a JSON object consisting of the
 following two elements:
@@ -2081,24 +2075,24 @@ Content-Type: application/json
 
 
 
-When receiving the request, the client MUST parse the JSON object
+When receiving the request, the RC MUST parse the JSON object
 and validate the hash value as described in 
-{{interaction-hash}}. If the hash validates, the client sends
+{{interaction-hash}}. If the hash validates, the RC sends
 a continuation request to the AS as described in {{continue-after-interaction}} using the interaction
 reference value received here.
 
 ### Calculating the interaction hash {#interaction-hash}
 
-The "hash" parameter in the request to the client's callback URL ties
+The "hash" parameter in the request to the RC's callback URL ties
 the front channel response to an ongoing request by using values
-known only to the parties involved. This prevents several kinds of
-session fixation attacks against the client.
+known only to the parties involved. This security mechanism prevents several kinds of
+session fixation attacks against the RC.
 
 To calculate the "hash" value, the party doing the calculation
 first takes the "nonce" value sent by the RC in the 
 [interaction section of the initial request](#request-interact-callback), the AS's nonce value
 from [the callback response](#response-interact-callback), and the "interact_ref"
-sent to the client's callback URL.
+sent to the RC's callback URL.
 These three values are concatenated to each other in this order
 using a single newline character as a separator between the fields.
 There is no padding or whitespace before or after any of the lines,
@@ -2154,9 +2148,9 @@ hash value.
 
 # Continuing a Grant Request {#continue-request}
 
-If the client receives a continuation element in its response 
-{{response-continue}}, the client can make an HTTP POST call to
-the continuation URI with a JSON object. The client MUST send the handle
+If the RC receives a `continue` element in its response 
+{{response-continue}}, the RC can make an HTTP POST call to
+the continuation URI with a JSON object. The RC MUST send the handle
 reference from the continuation element in its request as a top-level
 JSON parameter.
 
@@ -2168,7 +2162,7 @@ JSON parameter.
 
 
 
-The client MAY include other parameters as described here or as
+The RC MAY include other parameters as described here or as
 defined [a registry TBD](#IANA). 
 
 [[ Editor's note: We probably want to
@@ -2179,8 +2173,8 @@ in that kind of thing, and the continuation request is the place where
 that would fit. ]]
 
 If a "wait" parameter was included in the continuation response, the
-client MUST NOT call the continuation URI prior to waiting the number of
-seconds indicated. If no "wait" period is indicated, the client SHOULD
+RC MUST NOT call the continuation URI prior to waiting the number of
+seconds indicated. If no "wait" period is indicated, the RC SHOULD
 wait at least 5 seconds [[ Editor's note: what's a reasonable amount of
 time so as not to DOS the server?? ]].
 
@@ -2188,30 +2182,30 @@ The response from the AS is a JSON object and MAY contain any of the
 elements described in {{response}}, with some
 variations:
 
-If the AS determines that the client can make a further continuation
+If the AS determines that the RC can make a further continuation
 request, the AS MUST include a new 
 ["continue" response element](#response-continue). The
 returned handle value MUST NOT be the same as that used to make the
 continuation request, and the continuation URI MAY remain the same. If
-the AS does not return a new "continue" response element, the client
-MUST NOT make an additional continuation request. If a client does so,
+the AS does not return a new "continue" response element, the RC
+MUST NOT make an additional continuation request. If a RC does so,
 the AS MUST return an error.
 
-If the AS determines that the client still needs to drive interaction
-with the user, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) the client [indicated in its initial request](#request-interact). Unique values such as interaction URIs
+If the AS determines that the RC still needs to drive interaction
+with the RQ, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) the RC [indicated in its initial request](#request-interact). Unique values such as interaction URIs
 and nonces SHOULD be re-generated and not re-used.
 
-The client MUST present proof of the same [key identified in the initial request](#request-key) by
+The RC MUST present proof of the same [key identified in the initial request](#request-key) by
 signing the request as described in {{binding-keys}}. This requirement
-is in place whether or not the AS had previously registered the client's
+is in place whether or not the AS had previously registered the RC's
 key as described in {{request-key-authenticate}}.
 
 ## Continuing after a Finalized Interaction {#continue-after-interaction}
 
-If the client has received an interaction reference from a ["callback"](#interaction-callback) message, the
-client MUST include the "interaction_ref" in its continuation request.
-The client MUST validate the hash before making the continuation
-request, but note that the client does not send the hash back to the AS
+If the RC has received an interaction reference from a ["callback"](#interaction-callback) message, the
+RC MUST include the "interaction_ref" in its continuation request.
+The RC MUST validate the hash before making the continuation
+request, but note that the RC does not send the hash back to the AS
 in the request.
 
 ~~~
@@ -2225,42 +2219,42 @@ in the request.
 
 A request MAY be continued even after access tokens have been
 issued, so long as the handle is valid. The AS MAY respond to such a continuation
-request with new access tokens as described in {{response-token}} based on the client's
+request with new access tokens as described in {{response-token}} based on the RC's
 original request. The AS SHOULD revoke existing access tokens.
-If the AS determines that the client can make a further continuation
+If the AS determines that the RC can make a further continuation
 request in the future, the AS MUST include a new 
 ["continue" response element](#response-continue). The
 returned handle value MUST NOT be the same as that used to make the
 continuation request, and the continuation URI MAY remain the same. If
-the AS does not return a new "continue" response element, the client
-MUST NOT make an additional continuation request. If a client does so,
+the AS does not return a new "continue" response element, the RC
+MUST NOT make an additional continuation request. If the RC does so,
 the AS MUST return an error.
 
 # Token Management {#token-management}
 
 If an access token response includes the "manage" parameter as
-described in {{response-token-single}}, the client MAY call
+described in {{response-token-single}}, the RC MAY call
 this URL to manage the access token with any of the actions defined in
 the following sections. Other actions are undefined by this
 specification.
 
 The access token being managed acts as the access element for its own
-management API. The client MUST present proof of an appropriate key
+management API. The RC MUST present proof of an appropriate key
 along with the access token.
 
 If the token is sender-constrained (i.e., not a bearer token), it
 MUST be sent [with the appropriate binding for the access token](#use-access-token). 
 
-If the token is a bearer token, the client MUST present proof of the
+If the token is a bearer token, the RC MUST present proof of the
 same [key identified in the initial request](#request-key) as described in {{binding-keys}}.
 
 The AS MUST validate the proof and assure that it is associated with
-either the token itself or the client the token was issued to, as
+either the token itself or the RC the token was issued to, as
 appropriate for the token's presentation type.
 
 ## Rotating the Access Token {#rotate-access-token}
 
-The client makes an HTTP POST to the token management URI, sending
+The RC makes an HTTP POST to the token management URI, sending
 the access token in the appropriate header and signing the request
 with the appropriate key. 
 
@@ -2272,7 +2266,7 @@ Detached-JWS: eyj0....
 ~~~
 
 The AS validates that the token presented is associated with the management
-URL, that the AS issued the token to the given client, and that
+URL, that the AS issued the token to the given RC, and that
 the presented key is appropriate to the token. The access token MAY be 
 expired, and in such cases the AS SHOULD honor the rotation request to 
 the token management URL. The AS MAY store different lifetimes for
@@ -2284,7 +2278,7 @@ with this URL, if possible, and return a new access token response as
 described in {{response-token-single}}. The value of the
 access token MUST NOT be the same as the current value of the access
 token used to access the management API. The response MAY include an
-updated access token management URL as well, and if so, the client
+updated access token management URL as well, and if so, the RC
 MUST use this new URL to manage the new access token.
 
 ~~~
@@ -2319,7 +2313,7 @@ MUST use this new URL to manage the new access token.
 
 ## Revoking the Access Token {#revoke-access-token}
 
-The client makes an HTTP DELETE request to the token management
+The RC makes an HTTP DELETE request to the token management
 URI, signing the request with its key. 
 
 ~~~
@@ -2331,7 +2325,7 @@ Detached-JWS: eyj0....
 
 
 
-If the token was issued to the client identified by the key, the AS
+If the token was issued to the RC identified by the key, the AS
 MUST invalidate the current access token associated with this URL, if
 possible, and return an HTTP 204 response code.
 
@@ -2585,7 +2579,7 @@ SSL_CLIENT_CERT: MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3MDUGA1UEAwwuQmV
  lwLW9b+Tfn/daUbIDctxeJneq2anQyU2znBgQl6KILDSF4eaOqlBut/KNZHHazJh
  
 {
-    "client": {
+    "display": {
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
     },
@@ -2660,7 +2654,7 @@ iKEO7vj1APv32dsux67gZYiUpjm0wEZprjlG0a07R984KLeK1XPjXgViEwEdlirUmpVy
 T9tyEYqGrTfm5uautELgMls9sgSyE929woZ59elg
  
 {
-    "client": {
+    "display": {
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
     },
@@ -2724,7 +2718,7 @@ Sa/Ue1yLEAMg=="]}
 Digest: SHA=oZz2O3kg5SEFAhmr0xEBbc4jEfo=
  
 {
-    "client": {
+    "display": {
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
     },
@@ -2803,7 +2797,7 @@ cWFkzBAr6oC4Qp7HnY_5UT6IWkRJt3efwYprWcYouOVjtRan3kEtWkaWr
 G0J4bPVnTI5St9hJYvvh7FE8JirIg
  
 {
-    "client": {
+    "display": {
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
     },
@@ -2888,10 +2882,10 @@ assertions
 
 The information returned from this method is for optimization
 purposes only. The AS MAY deny any request, or any portion of a request,
-even if it lists a capability as supported. For example, a given client
+even if it lists a capability as supported. For example, a given RC
 can be registered with the `mtls` key proofing
 mechanism, but the AS also returns other proofing methods, then the AS
-will deny a request from that client using a different proofing
+will deny a request from that RC using a different proofing
 mechanism.
 
 
@@ -3068,7 +3062,7 @@ Content-type: application/json
 
 
 The RS MAY make this handle available as part of a 
-[response to a client](#rs-request-without-token) or as
+[response](#rs-request-without-token) or as
 documentation to developers.
 
 [[ Editor's note: It's not an exact match here because the
@@ -3081,16 +3075,16 @@ core protocol. ]]
 
 ## Requesting a Resources With Insufficient Access {#rs-request-without-token}
 
-If the client calls an RS without an access token, or with an
-invalid access token, the RS MAY respond to the client with an
+If the RC calls an RS without an access token, or with an
+invalid access token, the RS MAY respond to the RC with an
 authentication header indicating that GNAP. The address of the GNAP
 endpoint MUST be sent in the "as_uri" parameter. The RS MAY
-additionally return a resource reference that the client MAY use in
+additionally return a resource reference that the RC MAY use in
 its [resource request](#request-resource). This
 resource reference handle SHOULD be sufficient for at least the action
-the client was attempting to take at the RS. The RS MAY use the [dynamic resource handle request](#rs-register-resource-handle) to register a new resource handle, or use a handle that
+the RC was attempting to take at the RS. The RS MAY use the [dynamic resource handle request](#rs-register-resource-handle) to register a new resource handle, or use a handle that
 has been pre-configured to represent what the AS is protecting. The
-content of this handle is opaque to the RS and the client.
+content of this handle is opaque to the RS and the RC.
 
 ~~~
 WWW-Authenticate: GNAP as_uri=http://server.example/transaction,resource=FWWIKYBQ6U56NL1
@@ -3098,10 +3092,10 @@ WWW-Authenticate: GNAP as_uri=http://server.example/transaction,resource=FWWIKYB
 
 
 
-The client then makes a call to the "as_uri" as described in 
+The RC then makes a call to the "as_uri" as described in 
 {{request}}, with the value of "resource" as one of the members
 of a "resources" array {{request-resource-single}}. The
-client MAY request additional resources and other information, and MAY
+RC MAY request additional resources and other information, and MAY
 request multiple access tokens.
 
 [[ Editor's note: this borrows heavily from UMA 2's "distributed
@@ -3161,7 +3155,7 @@ provide proof of a key as well.
 Handles are passed between parties and therefore should not contain
 any private data.
 
-When user information is passed to the client, the AS needs to make
+When user information is passed to the RC, the AS needs to make
 sure that it has the permission to do so.
 
 --- back
@@ -3170,6 +3164,8 @@ sure that it has the permission to do so.
 
 - -11
     - Removed oidc_ prefix from several values and used RFC8693 assertion types.
+    - Changed "client" to "RC" throughout.
+    - Changed "user" to "RQ" or "RO" as appropriate.
 
 - -10
 
