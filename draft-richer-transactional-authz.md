@@ -1,5 +1,5 @@
 ---
-title: 'XYZ: Grant Negotiation Access Protocol'
+title: 'Grant Negotiation Access Protocol'
 docname: draft-richer-transactional-authz-latest
 category: std
 
@@ -70,8 +70,9 @@ piece of software, and conveying that delegation to the software. This
 delegation can include access to a set of APIs as well as information
 passed directly to the software. 
 
-This document is input into the GNAP working group and should be
-referred to as "XYZ" to differentiate it from other proposals.
+This document has been prepared by the GNAP working group design team of
+Kathleen Moriarty, Fabien Imbault, Dick Hard, and Mike Jones. This document
+is input into the GNAP working group.
 
 {::boilerplate bcp14}
 
@@ -590,7 +591,28 @@ expired access token at the AS using the token's management URL.
     a new access token and can also include updated token management 
     information, which the RC will store in place of the values 
     returned in (2).
-    
+   
+## JSON Structures and Polymorphism {#polymorphism}
+
+The GNAP protocol makes use of polymorphism within the [JSON](#RFC8259) structures used for
+the protocol. Each element of this protocol is defined in terms of the JSON data type
+that its values can take, whether it's a string, object, array, boolean, or number. For some
+elements, different data types offer different descriptive capabilities and are used in different
+situations for the same element. Each data type provides a different syntax to express
+the same underlying semantic protocol element, which allows for optimization and 
+simplification in many common cases. 
+
+For example, a resource request can be described using an object with multiple
+dimensional components, or it can be requested using a string. In both cases, the resource
+request is being described in a way that the AS needs to interpret, but with different
+levels of specificity and complexity for the client to deal with. An API designer
+can provide a set of common access parameters as simple strings but still allow
+client developers to specify custom access when needed. 
+
+Another way that polymorphism is used is that the values within JSON arrays need not 
+all be of the same JSON data type. However, each element within the array generally needs to be
+of the same kind of semantic element for the collection to make sense.
+
 # Requesting Access {#request}
 
 To start a request, the RC sends [JSON](#RFC8259) document with an object as its root. Each
@@ -863,6 +885,13 @@ string-type resource items.
     ]
 ~~~
 
+[[ Editor's note: passing resource requests by reference really is akin to a "scope", 
+and we have many years of experience showing us that the simplicity of giving a developer
+a set of strings to send is a simple and powerful pattern. We could always require objects
+and just use the "type" field as a scope value, but that's a lot of complexity to pay for
+the simple case. Client developers will always know which kind they need to send, because
+they're the ones picking from the API's description. ]]
+
 ### Requesting Multiple Access Tokens {#request-resource-multiple}
 
 When requesting multiple access tokens, the resources element is
@@ -960,7 +989,7 @@ types in the same structure, so perhaps these should be split.
 There's also a difference between user information and 
 authentication event information. ]]
 
-## Identifying the Client Key {#request-key}
+## Identifying the RC by Key {#request-key}
 
 When sending a non-continuation request to the AS, the RC MUST identify
 itself by including the `key` field in the request and by signing the
@@ -1039,22 +1068,25 @@ can be requested and which interaction methods can be used. For example, only
 specific RCs with certain known keys might be trusted with access tokens without the
 AS interacting directly with the RO as in {{example-no-user}}.
 
-The presentation of a key is of vital importance to the protocol as it allows the
-AS to strongly associate multiple requests from the same RC with each other. This
-value exists whether the AS knows the key ahead of time or not, and as such the
+The presentation of a key allows the AS to strongly associate multiple
+successive requests from the same RC with each other. This
+is true when the AS knows the key ahead of time and can use the key to
+authenticate the RC software, but also if the key is
+ephemeral and created just for this request. As such the
 AS MAY allow for RCs to make requests with unknown keys. This pattern allows
 for ephemeral RCs, such as single-page applications, and RCs with many individual instances,
 such as mobile applications, to generate their own key pairs and use them within
 the protocol without having to go through a separate registration step.
 The AS MAY limit which capabilities are made available to RCs 
 with unknown keys. For example, the AS could have a policy saying that only
-previously-registered RCs can request particular resources. 
+previously-registered RCs can request particular resources, or that all
+RCs with unknown keys have to be interactively approved by an RO. 
 
 ### Identifying the Client Key By Reference {#request-key-reference}
 
 If the RC has a reference for its key, the RC MAY send that
-reference handle as a string. The format of this string is opaque to
-the RC.
+reference handle as a string. The format of this string is determined
+by the AS and is opaque to the RC. 
 
 ~~~
 {
@@ -1073,12 +1105,15 @@ with an error.
 
 If the RC identifies its key by reference, the referenced key
 MAY be a symmetric key known to the AS. The RC MUST NOT send a
-symmetric key by value, as doing so would be a security violation.
+symmetric key by value in the request, as doing so would expose
+the key directly instead of proving possession of it. 
 
 [[ Editor's note: In many ways, passing a key identifier by reference
 is analogous to OAuth 2's "client_id" parameter {{RFC6749}}, especially when
-coupled with a confidential client's authentication process. See
-{{example-oauth2}} for an example. ]]
+coupled with a confidential client's registration and authentication process. See
+{{example-oauth2}} for an example. Something like this is required to make things
+easier for client developers in the common case where the AS already knows
+the client's key, and to allow symmetric keys. ]]
 
 ## Identifying the User {#request-user}
 
@@ -1160,7 +1195,8 @@ either of these, use the full [user request object](#request-user) instead.
 unstructured user assertion reference issued by the AS to the RC.
 We could put it in as an assertion type of "gnap_reference" or
 something like that. Downside: it's more verbose and potentially
-confusing to the client developer. ]]
+confusing to the client developer to have an assertion-like thing that's
+internal to the AS and not an assertion. ]]
 
 If the AS does not recognize the user reference, it MUST 
 return an error.
@@ -2100,6 +2136,17 @@ access token.
 }
 ~~~
 
+[[ Editor's note: the ability to dynamically return reference handles
+allows for an inline version of dynamic registration without needing 
+to go through a discrete registration step, for clients where that
+makes sense. Currently this is entirely up to the AS to decide when
+to issue these, but maybe the client should signal that it can receive
+these handles as part of the request? Since the client is the component
+that will know if it's in a position to make use of such reference handles
+in the future (like a mobile app) or if it's just going to evaporate
+at the end of a session (like an SPA). Ultimately we need to deal with
+a range of dynamism, not just the "pre-registered" vs. "non-registered"
+use cases that OAuth forces us in to. ]]
 
 ## Error response {#error-response}
 
@@ -2700,7 +2747,7 @@ The keys presented by the RC in the {{request}}
 MUST be proved in all continuation requests
 {{continue-request}} and token management requests {{token-management}}. The AS MUST validate all keys
 [presented by the RC](#request-key) or referenced in an
-ongoing transaction for each call within that transaction.
+ongoing request for each call within that request.
 
 [[ Editor's note: We are going to need a way for a client to rotate its keys
 securely, even while an ongoing grant is in effect. ]]
@@ -2794,7 +2841,7 @@ MUST extract the payload of the JWS and treat it as the request body
 for further processing.
 
 ~~~
-POST /transaction HTTP/1.1
+POST /tx HTTP/1.1
 Host: server.example.com
 Content-Type: application/jose
  
@@ -2851,7 +2898,7 @@ thumbprint presented by the RC application as described in
 {{RFC8705}} section 3.
 
 ~~~
-POST /transaction HTTP/1.1
+POST /tx HTTP/1.1
 Host: server.example.com
 Content-Type: application/json
 SSL_CLIENT_CERT: MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3MDUGA1UEAwwuQmVz
@@ -2931,7 +2978,7 @@ signature header as described in {{I-D.ietf-oauth-dpop}}
 section 2.
 
 ~~~
-POST /transaction HTTP/1.1
+POST /tx HTTP/1.1
 Host: server.example.com
 Content-Type: application/json
 DPoP: eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IlJTMjU2IiwiandrIjp7Imt0eSI6Il
@@ -3001,7 +3048,7 @@ Signature header as described in {{I-D.ietf-httpbis-message-signatures}} section
 calculate and present the Digest header as defined in {{RFC3230}}.
 
 ~~~
-POST /transaction HTTP/1.1
+POST /tx HTTP/1.1
 Host: server.example.com
 Content-Type: application/json
 Content-Length: 716
@@ -3069,7 +3116,7 @@ following additional requirements:
 - The b (body hash) field MUST be calculated and supplied
 
 ~~~
-POST /transaction HTTP/1.1
+POST /tx HTTP/1.1
 Host: server.example.com
 Content-Type: application/json
 PoP: eyJhbGciOiJSUzI1NiIsImp3ayI6eyJrdHkiOiJSU0EiLCJlIjoi
@@ -3141,7 +3188,7 @@ can be negotiated dynamically in the course of the protocol.
 
 However, the AS can have limits on its allowed functionality. If the
 RC wants to optimize its calls to the AS before making a request, it MAY
-send an HTTP OPTIONS request to the transaction endpoint to retrieve the
+send an HTTP OPTIONS request to the grant request endpoint to retrieve the
 server's discovery information. The AS MUST respond with a JSON document
 containing the following information:
 
@@ -3441,7 +3488,7 @@ has been pre-configured to represent what the AS is protecting. The
 content of this handle is opaque to the RS and the RC.
 
 ~~~
-WWW-Authenticate: GNAP as_uri=http://server.example/transaction,resource=FWWIKYBQ6U56NL1
+WWW-Authenticate: GNAP as_uri=http://server.example/tx,resource=FWWIKYBQ6U56NL1
 ~~~
 
 
@@ -3525,7 +3572,8 @@ sure that it has the permission to do so.
     - Added refresh examples.
     - Added diagrams to RS examples.
     - Added ui_locales hint to interaction block.
-    
+    - Added section on polymorphism.
+    - Added numerous editorial notes to describe why elements are in place.
 
 - -10
 
