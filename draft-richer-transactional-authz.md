@@ -26,6 +26,7 @@ normative:
        date: 2015
     RFC2119:
     RFC3230:
+    RFC5646:
     RFC7515:
     RFC6749:
     RFC6750:
@@ -215,7 +216,7 @@ protocol flow.
     what access is needed.
     The RS informs the RC that access can be granted through the AS.
 
-- (2) The RC [creates requests access at the AS](#request).
+- (2) The RC [requests access at the AS](#request).
 
 - (3) The AS processes the request and determines what is needed to fulfill
     the request. The AS sends its [response to the RC](#response).
@@ -254,7 +255,7 @@ protocol flow.
 - (12) The RS determines if the new token is sufficient for the request by
     examining the token, potentially [calling the AS](#introspection).
 
-- (13) The RC [disposes of the token](#revoke-token) once the RC
+- (13) The RC [disposes of the token](#revoke-access-token) once the RC
     has completed its access of the RS.
 
 The following sections and {{examples}} contain specific guidance on how to use the 
@@ -1175,7 +1176,7 @@ if the RC provides one or more interaction capabilities in its request.
 ### Identifying the User by Reference {#request-user-reference}
 
 User reference identifiers can be dynamically
-[issued by the AS](#response-dynamic-handle) to allow the RC 
+[issued by the AS](#response-dynamic-handles) to allow the RC 
 to represent the same RQ to the AS over subsequent requests.
 
 If the RC has a reference for the RQ at this AS, the
@@ -1235,7 +1236,7 @@ defines the following interaction capabilities:
 `ui_locales`
 : Indicates the RQ's preferred locales that the AS can use
     during interaction, particularly before the RO has 
-    authenticated. {{request-interact-locales}}
+    authenticated. {{request-interact-locale}}
 
 The following sections detail requests for interaction
 capabilities. Additional interaction capabilities are defined in 
@@ -1247,7 +1248,7 @@ the protocol design that these are separate pieces to allow such
 knitting to take place. ]]
 
 In this non-normative example, the RC is indicating that it can [redirect](#request-interact-redirect)
-the RQ to an arbitrary URL and can receive a [callback](#request-interaction-callback) through
+the RQ to an arbitrary URL and can receive a [callback](#request-interact-callback) through
 a browser request.
 
 ~~~
@@ -3368,7 +3369,7 @@ value in the "existing_access_token" field.
 The RS MUST identify itself with its own key and sign the
 request.
 
-[[ Editor's note: this is similar to {{request-existing-grant}} but based on the access token
+[[ Editor's note: this is similar to {{request-existing}} but based on the access token
 and not the grant. We might be able to re-use that function: the fact that the keys presented are not the ones
 used for the access token should indicate that it's a different party
 and a different kind of request, but there might be some subtle security issues there. ]]
