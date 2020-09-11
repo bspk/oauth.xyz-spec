@@ -72,7 +72,7 @@ delegation can include access to a set of APIs as well as information
 passed directly to the software. 
 
 This document has been prepared by the GNAP working group design team of
-Kathleen Moriarty, Fabien Imbault, Dick Hard, and Mike Jones. This document
+Kathleen Moriarty, Fabien Imbault, Dick Hard, Mike Jones, and Justin Richer. This document
 is input into the GNAP working group.
 
 {::boilerplate bcp14}
@@ -354,7 +354,7 @@ In this example flow, the RC is a device that is capable of presenting a short,
 human-readable code to the user and directing the user to enter that code at
 a known URL. The RC is not capable of presenting an arbitrary URL to the user, 
 nor is it capable of accepting incoming HTTP requests from the user's browser.
-The RC polls the AS while it is waiting for the RO to authorize the request.
+The RC polls the AS while it is waiting for the RO to authorize the request.s
 The user's interaction is assumed to occur on a secondary device. In this example
 it is assumed that the user is both the RQ and RO, though the user is not assumed
 to be interacting with the RC through the same web browser used for interaction at
@@ -1721,8 +1721,9 @@ allow the RC to follow up after interaction has been
 concluded.
 
 [[ Editor's note: The combination of a "handle" and "uri" really feels like
-the access token pattern. Perhaps the exact constructs for this could be
-re-used here instead of something special for the request continuation? ]]
+the access token pattern. Perhaps the exact constructs for tokens could be
+re-used here instead of something special for the request continuation? Especially
+if we're using some kind of directed access token mechanism. ]]
 
 
 ## Access Tokens {#response-token}
@@ -1822,6 +1823,11 @@ URL that has access to three described resources.
 
 If the RC [requested multiple access tokens](#request-resource-multiple), the AS MUST NOT respond with a
 single access token structure.
+
+[[ Editor's note: There has been interest in describing a way for the AS to tell the
+client both how and where to use the token. This kind of directed access token could
+allow for some interesting deployment patterns where the client doesn't know
+much]]
 
 ### Multiple Access Tokens {#response-token-multiple}
 
