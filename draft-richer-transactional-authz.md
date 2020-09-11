@@ -134,6 +134,13 @@ Resource Owner (RO)
 Requesting Party (RQ, aka "user")
 : Operates and interacts with the RC.
 
+
+The GNAP protocol design does not assume any one deployment architecture,
+but instead attempts to define roles that can be fulfilled in a number
+of different ways for different use cases. As long as a given role fulfills
+all of its obligations and behaviors as defined by the protocol, GNAP does
+not make additional requirements on its structure or setup.
+
 Multiple roles can be fulfilled by the same party, and a given party
 can switch roles in different instances of the protocol. For example,
 the RO and RQ in many instances are the same person, where a user is
@@ -149,9 +156,28 @@ original request. In this case, one piece of software is both an
 RS and an RC from different perspectives, and it fulfills these 
 roles separately as far as the overall protocol is concerned.
 
+A single role need not be deployed as a monolithic service. For example, 
+An RC could have components that are installed on the RQ's device as 
+well as a back-end system that it communicates with. If both of these
+components participate in the delegation protocol, they are both considered
+part of the RC. 
+
+For another example, an AS could likewise be built out of many constituent
+components in a distributed architecture. The component that the RC
+calls directly could be different from the component that the the
+RO interacts with to drive consent, since API calls and user interaction
+have different security considerations in many environments. Furthermore,
+the AS could need to collect identity claims about the RO from one system
+that deals with user attributes while generating access tokens at
+another system that deals with security rights. From the perspective of
+GNAP, all of these are pieces of the AS and together fulfill the
+role of the AS as defined by the protocol.
+
 [[ Editor's note: The names for the roles are an area of ongoing
 discussion within the working group, as is the appropriate precision
-of what activities and expectations a particular role covers. ]]
+of what activities and expectations a particular role covers. In particular,
+the AS might be formally decomposed into delegation components, that the
+client talks to, and interaction components, that the user talks to. ]]
 
 ## Sequences {#sequence}
 
@@ -199,7 +225,7 @@ protocol flow.
         |        |-(13)->|               |       |            |
         |        |       |               |       |            |
         +--------+       +---------------+       +------------+
-
+    
     Legend
     + + + indicates a possible interaction with a human
     ----- indicates an interaction between protocol roles
@@ -354,7 +380,7 @@ In this example flow, the RC is a device that is capable of presenting a short,
 human-readable code to the user and directing the user to enter that code at
 a known URL. The RC is not capable of presenting an arbitrary URL to the user, 
 nor is it capable of accepting incoming HTTP requests from the user's browser.
-The RC polls the AS while it is waiting for the RO to authorize the request.s
+The RC polls the AS while it is waiting for the RO to authorize the request.
 The user's interaction is assumed to occur on a secondary device. In this example
 it is assumed that the user is both the RQ and RO, though the user is not assumed
 to be interacting with the RC through the same web browser used for interaction at
@@ -593,66 +619,45 @@ expired access token at the AS using the token's management URL.
     information, which the RC will store in place of the values 
     returned in (2).
    
-## JSON Structures and Polymorphism {#polymorphism}
-
-The GNAP protocol makes use of polymorphism within the [JSON](#RFC8259) structures used for
-the protocol. Each element of this protocol is defined in terms of the JSON data type
-that its values can take, whether it's a string, object, array, boolean, or number. For some
-elements, different data types offer different descriptive capabilities and are used in different
-situations for the same element. Each data type provides a different syntax to express
-the same underlying semantic protocol element, which allows for optimization and 
-simplification in many common cases. 
-
-For example, a resource request can be described using an object with multiple
-dimensional components, or it can be requested using a string. In both cases, the resource
-request is being described in a way that the AS needs to interpret, but with different
-levels of specificity and complexity for the client to deal with. An API designer
-can provide a set of common access parameters as simple strings but still allow
-client developers to specify custom access when needed. 
-
-Another way that polymorphism is used is that the values within JSON arrays need not 
-all be of the same JSON data type. However, each element within the array generally needs to be
-of the same kind of semantic element for the collection to make sense.
-
 # Requesting Access {#request}
 
 To start a request, the RC sends [JSON](#RFC8259) document with an object as its root. Each
 member of the request object represents a different aspect of the
 RC's request. Each field is described in detail in a section below.
 
-`resources`
+resources
 : Describes the rights that the RC is requesting for one or more access tokens to be
     used at RS's. {{request-resource}}
    
-`subject`
+subject
 : Describes the information about the RO that the RC is requesting to be returned
     directly in the response from the AS. {{request-subject}}
 
-`key`
+key
 : Identifies the key that the RC will use to protect this request and any continuation
     requests at the AS. {{request-key}}
 
 
-`user`
+user
 : Identifies the RQ to the AS in a manner that the AS can verify, either directly or
     by interacting with the RQ to determine their status as the RO. {{request-user}}
 
-`interact`
+interact
 : Describes the capabilities that the RC has for allowing the RO to interact with the
     AS. {{request-interact}}
 
-`display`
+display
 : Describes the user-facing information about the RC used in 
     interactions at the AS. {{request-display}}
 
-`capabilities`
+capabilities
 : Identifies named extension capabilities that the RC can use, signaling to the AS
     which extensions it can use. {{request-capabilities}}
 
-`existing_grant`
+existing_grant
 : Identifies a previously-existing grant that the RC is extending with this request. {{request-existing}}
 
-`claims`
+claims
 : Identifies the identity claims to be returned as part of an OpenID Connect claims request. {{request-oidc-claims}}
 
 Additional members of this request object can be defined by extensions to this protocol
@@ -1090,9 +1095,9 @@ reference handle as a string. The format of this string is determined
 by the AS and is opaque to the RC. 
 
 ~~~
-{
+
   "key": "7C7C4AZ9KHRS6X63AJAO"
-}
+
 ~~~
 
 
@@ -2748,10 +2753,21 @@ oauthpop
 : OAuth PoP key proof authentication header
 
 
-Additional values can be defined by [a registry TBD](#IANA).
+Additional proofing methods are defined by [a registry TBD](#IANA).
 
-The keys presented by the RC in the {{request}}
-MUST be proved in all continuation requests
+All key binding methods used by this specification MUST cover all relevant portions
+of the request, including anything that would change the nature of the request, to allow
+for secure validation of the request by the AS. Relevant aspects include
+the URI being called, the HTTP method being used, any relevant HTTP headers and
+values, and the HTTP message body itself. The recipient of the signed message
+MUST validate all components of the signed message to ensure that nothing
+has been tampered with or substituted in a way that would change the nature of
+the request.
+
+When used in the GNAP delegation protocol, these key binding mechanisms allow
+the AS to ensure that the keys presented by the RC in the initial request are in 
+control of the party calling any follow-up or continuation requests. To facilitate 
+this requirement, all keys in the initial request {{request-key}} MUST be proved in all continuation requests
 {{continue-request}} and token management requests {{token-management}}. The AS MUST validate all keys
 [presented by the RC](#request-key) or referenced in an
 ongoing request for each call within that request.
@@ -2762,16 +2778,35 @@ securely, even while an ongoing grant is in effect. ]]
 ## Detached JWS {#detached-jws}
 
 This method is indicated by `jwsd` in the
-`proof` field. To sign a request, the RC
-takes the serialized body of the request and signs it using detached
-JWS {{RFC7797}}. The header of the JWS MUST contain the
-kid field of the key bound to this RC for this request. The JWS header
-MUST contain an alg field appropriate for the key identified by kid
-and MUST NOT be none.
+`proof` field. A JWS {{RFC7515}} signature object is created as follows:
+
+The header of the JWS MUST contain the
+`kid` field of the key bound to this RC for this request. The JWS header
+MUST contain an `alg` field appropriate for the key identified by kid
+and MUST NOT be `none`.
+
+To protect the request, the JWS header MUST contain the following
+additional fields.
+
+htm
+: The HTTP Method used to make this request, as an uppercase ASCII string.
+
+htu
+: The HTTP URI used for this request, including all path and query components.
+
+ts
+: A timestamp of the request in integer seconds
+
+[[ Editor's note: It's not the usual practice to put additional information
+into the header of a JWS, but this keeps us from having to normalize the body
+serialization. ]]
+
+The payload of the JWS object is the serialized body of the request, and
+the object is signed according to detached JWS {{RFC7797}}. 
 
 The RC presents the signature in the Detached-JWS HTTP Header
-field. [Editor's Note: this is a custom header field, do we need
-this?]
+field. [[ Editor's Note: this is a custom header field, do we need
+this? ]]
 
 ~~~
 POST /tx HTTP/1.1
@@ -2821,7 +2856,7 @@ kpdfWdiPQddQ6Y1cK2U3obvUg7w"
 
 
 
-When the AS receives the Detached-JWS header, it MUST parse its
+When the server (AS or RS) receives the Detached-JWS header, it MUST parse its
 contents as a detached JWS object. The HTTP Body is used as the
 payload for purposes of validating the JWS, with no
 transformations.
@@ -2834,13 +2869,32 @@ general-purpose HTTP signing. ]]
 
 ## Attached JWS {#attached-jws}
 
-This method is indicated by `jws` in the
-`proof` field. To sign a request, the RC
-takes the serialized body of the request JSON and signs it using JWS
-{{RFC7515}}. The header of the JWS MUST contain the kid
-field of the key bound to this RC during this request. The JWS header
-MUST contain an alg field appropriate for the key identified by kid
-and MUST NOT be none.
+This method is indicated by `jwsd` in the
+`proof` field. A JWS {{RFC7515}} signature object is created as follows:
+
+The header of the JWS MUST contain the
+`kid` field of the key bound to this RC for this request. The JWS header
+MUST contain an `alg` field appropriate for the key identified by kid
+and MUST NOT be `none`.
+
+To protect the request, the JWS header MUST contain the following
+additional fields.
+
+htm
+: The HTTP Method used to make this request, as an uppercase ASCII string.
+
+htu
+: The HTTP URI used for this request, including all path and query components.
+
+ts
+: A timestamp of the request in integer seconds
+
+[[ Editor's note: It's not the usual practice to put additional information
+into the header of a JWS, but this keeps us from having to modify the body
+to use this signature method. ]]
+
+The payload of the JWS object is the JSON serialized body of the request, and
+the object is signed according to JWS and serialized into compact form {{RFC7515}}. 
 
 The RC presents the JWS as the body of the request along with a
 content type of `application/jose`. The AS
@@ -2977,12 +3031,19 @@ fHI6kqm3NCyCCTihe2ck5RmCc5l2KBO/vAHF0ihhFOOOby1v6qbPHQcxAU6rEb907
 ~~~
 
 
+[[ Editor's note: ]]
+
 ## DPoP {#dpop-binding}
 
 This method is indicated by `dpop` in the
 `proof` field. The RC creates a Demonstration of Proof-of-Possession
 signature header as described in {{I-D.ietf-oauth-dpop}}
-section 2.
+section 2. In addition to the required fields, the DPoP body MUST also
+contain a digest of the request body:
+
+digest
+: Digest of the request body as the value of the Digest 
+    header defined in {{RFC3230}}.
 
 ~~~
 POST /tx HTTP/1.1
@@ -3052,7 +3113,8 @@ awkward. The signature also doesn't protect the body of the request. ]]
 This method is indicated by `httpsig` in
 the `proof` field. The RC creates an HTTP
 Signature header as described in {{I-D.ietf-httpbis-message-signatures}} section 4. The RC MUST
-calculate and present the Digest header as defined in {{RFC3230}}.
+calculate and present the Digest header as defined in {{RFC3230}} and include
+this header in the signature.
 
 ~~~
 POST /tx HTTP/1.1
@@ -3115,12 +3177,17 @@ the `proof` field. The RC creates an HTTP
 Authorization PoP header as described in {{I-D.ietf-oauth-signed-http-request}} section 4, with the
 following additional requirements:
 
-- The at (access token) field MUST be [note: this is in
-            contrast to the requirements in the existing spec]
+- The at (access token) field MUST be omitted
             unless this method is being used in conjunction with
             an access token as in {{use-access-token}}.
+            [[ Editor's note: this is in contradiction to the referenced
+            spec which makes this field mandatory. ]]
 
 - The b (body hash) field MUST be calculated and supplied
+
+- All components of the URL MUST be calculated and supplied
+
+- The m (method) field MUST be supplied
 
 ~~~
 POST /tx HTTP/1.1
@@ -3185,6 +3252,11 @@ Y1cK2U3obvUg7w"
 ~~~
 
 
+
+[[ Editor's note: This is a stale draft from the OAuth working group, but
+it does at least provide some basic functionality for protecting HTTP messages
+with a signature. This work is likely to be subsumed by the general-purpose 
+HTTP message signature mechanism in {{httpsig-binding}}. ]]
 
 # Discovery {#discovery}
 
@@ -3579,8 +3651,10 @@ sure that it has the permission to do so.
     - Added refresh examples.
     - Added diagrams to RS examples.
     - Added ui_locales hint to interaction block.
-    - Added section on polymorphism.
+    - Added section on JSON polymorphism.
     - Added numerous editorial notes to describe why elements are in place.
+    - Added discussion on composition of roles.
+    - Added requirements for signature methods to cover all aspects of request and mechanisms to do so.
 
 - -10
 
@@ -4230,10 +4304,10 @@ While the GNAP protocol is not designed to be directly compatible with
 OAuth 2 {{RFC6749}}, considerations have been made to enable the use of
 OAuth 2 concepts and constructs more smoothly within the GNAP protocol.
 
-In this scenario, the client developer has a client_id and set of
-scope values from their OAuth 2 system and wants to apply them to the
+In this scenario, the client developer has a `client_id` and set of
+`scope` values from their OAuth 2 system and wants to apply them to the
 new protocol. Traditionally, the OAuth 2 client developer would put
-their client_id and scope values as parameters into a redirect request
+their `client_id` and `scope` values as parameters into a redirect request
 to the authorization endpoint.
 
 ~~~
@@ -4267,6 +4341,7 @@ Detached-JWS: ejy0...
     "interact": {
         "redirect": true,
         "callback": {
+            "method": "redirect",
             "uri": "https://client.example.net/return?state=123455",
             "nonce": "LKLTI25DK82FX4T4QFZC"
         }
@@ -4278,9 +4353,48 @@ Detached-JWS: ejy0...
 
 The client_id can be used to identify the client's keys that it
 uses for authentication, the scopes represent resources that the
-client is requesting, and the redirect_uri and state value are
-combined into a callback URI that can be unique per request. The
+client is requesting, and the `redirect_uri` and `state` value are
+pre-combined into a `callback` URI that can be unique per request. The
 client additionally creates a nonce to protect the callback, separate
 from the state parameter that it has added to its return URL.
 
 From here, the protocol continues as above.
+
+# JSON Structures and Polymorphism {#polymorphism}
+
+The GNAP protocol makes use of polymorphism within the [JSON](#RFC8259) structures used for
+the protocol. Each element of this protocol is defined in terms of the JSON data type
+that its values can take, whether it's a string, object, array, boolean, or number. For some
+elements, different data types offer different descriptive capabilities and are used in different
+situations for the same element. Each data type provides a different syntax to express
+the same underlying semantic protocol element, which allows for optimization and 
+simplification in many common cases. 
+
+In JSON, the named members of an object have no type associated with them, and any
+data type can be used as the value for any member. In practice, each member
+has a semantic type that needs to make sense to the parties creating and
+consuming the object. Within this protocol, each object member is defined in terms
+of its semantic content, and this semantic content might have expressions in
+different concrete data types for different specific purposes. Since each object
+member has exactly one value in JSON, each data type for an object member field
+is naturally mutually exclusive with other data types within a single JSON object.
+
+For example, a resource request for a single access token is composed of an array
+of resource request descriptions while a request for multiple access tokens is
+composed of an object whose member values are all arrays. Both of these represent requests
+for access, but the difference in syntax allows the RC and AS to differentiate
+between the two request types in the same request.
+
+Another form of polymorphism in JSON comes from the fact that the values within JSON
+arrays need not all be of the same JSON data type. However, within this protocol, 
+each element within the array needs to be of the same kind of semantic element for
+the collection to make sense. 
+
+For example, each aspect of a resource request can be described using an object with multiple
+dimensional components, or the aspect can be requested using a string. In both cases, the resource
+request is being described in a way that the AS needs to interpret, but with different
+levels of specificity and complexity for the RC to deal with. An API designer
+can provide a set of common access scopes as simple strings but still allow
+RC developers to specify custom access when needed for more complex APIs.
+
+Extensions to this specification can use different data types for defined fields, but
