@@ -72,8 +72,14 @@ delegation can include access to a set of APIs as well as information
 passed directly to the software. 
 
 This document has been prepared by the GNAP working group design team of
-Kathleen Moriarty, Fabien Imbault, Dick Hard, Mike Jones, and Justin Richer. This document
-is input into the GNAP working group.
+Kathleen Moriarty, Fabien Imbault, Dick Hardt, Mike Jones, and Justin Richer. This document
+is input into the GNAP working group and includes many notes on areas of discussion
+and decision that need to be made by the GNAP working group. Many of the 
+features in this proposed protocol can be accomplished in a number of alternative
+ways, and where possible, the editor has included notes and discussion
+from the design team regarding the options as understood. The design team
+believes that this document represents a reasonable starting point for the
+working group and submits all content to the working group for consensus building.
 
 {::boilerplate bcp14}
 
@@ -633,10 +639,11 @@ subject
 : Describes the information about the RO that the RC is requesting to be returned
     directly in the response from the AS. {{request-subject}}
 
-key
-: Identifies the key that the RC will use to protect this request and any continuation
-    requests at the AS. {{request-key}}
-
+client
+: Describes the RC that is making this request, including 
+    the key that the RC will use to protect this request and any continuation
+    requests at the AS and any user-facing information about the RC used in 
+    interactions at the AS. {{request-client}}
 
 user
 : Identifies the RQ to the AS in a manner that the AS can verify, either directly or
@@ -645,10 +652,6 @@ user
 interact
 : Describes the capabilities that the RC has for allowing the RO to interact with the
     AS. {{request-interact}}
-
-display
-: Describes the user-facing information about the RC used in 
-    interactions at the AS. {{request-display}}
 
 capabilities
 : Identifies named extension capabilities that the RC can use, signaling to the AS
@@ -686,8 +689,13 @@ A non-normative example of a grant request is below:
         },
         "dolphin-metadata"
     ],
-    "key": {
-        "proof": "jwsd",
+    "client": {
+      "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+      },
+      "proof": "jwsd",
+      "key": {
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -695,6 +703,7 @@ A non-normative example of a grant request is below:
                     "alg": "RS256",
                     "n": "kOB5rR4Jv0GMeL...."
         }
+      }
     },
     "interact": {
         "redirect": true,
@@ -703,10 +712,6 @@ A non-normative example of a grant request is below:
             "uri": "https://client.example.net/return/123455",
             "nonce": "LKLTI25DK82FX4T4QFZC"
         }
-    },
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
     },
     "capabilities": ["ext1", "ext2"],
     "subject": {
@@ -995,23 +1000,137 @@ types in the same structure, so perhaps these should be split.
 There's also a difference between user information and 
 authentication event information. ]]
 
-## Identifying the RC by Key {#request-key}
+## Identifying the RC {#request-client}
 
 When sending a non-continuation request to the AS, the RC MUST identify
-itself by including the `key` field in the request and by signing the
-request as described in {{binding-keys}}.
+itself by including the `client` field of the request and by signing the
+request as described in {{binding-keys}}. 
 
-When sent by value, the key MUST be a public key in at least one
-supported format and MUST contain a proof property that matches the
-proofing mechanism used in the request. If the key is sent in multiple
-formats, all the keys MUST be the same. The key presented in this
-field MUST be the key used to sign the request.
+When RC information is sent
+by value, the `client` field of the request consists of a JSON
+object with the following fields.
+
+key
+: The public key of the RC to be used in this request as 
+    described in {{request-key}}. This field is REQUIRED.
 
 proof
 : The form of proof that the RC will use when
-            presenting the key to the AS. The valid values of this field and
-            the processing requirements for each are detailed in 
-            {{binding-keys}}. This field is REQUIRED.
+    presenting the key to the AS. The valid values of this field and
+    the processing requirements for each are detailed in 
+    {{binding-keys}}. This field is REQUIRED.
+
+class_id
+: An identifier string that the AS can use to identify the
+    software comprising this instance of the RC. The contents
+    and format of this field are up to the AS. This field
+    is OPTIONAL.
+
+display
+: An object containing additional information that the AS 
+    MAY display to the RO during interaction, authorization,
+    and management. This field is OPTIONAL.
+
+~~~
+"client": {
+    "proof": "httpsig",
+    "key": {
+        "jwk": {
+                    "kty": "RSA",
+                    "e": "AQAB",
+                    "kid": "xyz-1",
+                    "alg": "RS256",
+                    "n": "kOB5rR4Jv0GMeLaY6_It_r3ORwdf8ci_JtffXyaSx8xY..."
+        },
+        "cert": "MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFA..."
+    },
+    "class_id": "web-server-1234",
+    "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+    }
+}
+~~~
+
+The RC MUST prove possession of any presented key by the `proof` mechanism
+associated with the key in the request.  Proof types
+are defined in [a registry TBD](#IANA) and an initial set are of methods
+are described in {{binding-keys}}. 
+
+Note that the AS MAY know the RC's public key ahead of time, and
+the AS MAY apply different policies to the request depending on what
+has been registered against that key. 
+If the same public key is sent by value on subsequent access requests, the AS SHOULD
+treat these requests as coming from the same RC software instance for purposes
+of identification, authentication, and policy application.
+If the AS does not know the RC's public key ahead of time, the AS
+MAY accept or reject the request based on AS policy, attestations
+within the client request, and other mechanisms.
+
+### Identifying the RC Instance {#request-instance}
+
+If the RC has an instance identifier that the AS can use to determine
+appropriate key information, the RC can send this value in the `instance_id`
+field. The instance identifier MAY be assigned to an RC instance at runtime
+through the {{response-dynamic-handles}} or MAY be obtained in another fashion,
+such as a static registration process at the AS.
+
+instance_id
+: An identifier string that the AS can use to identify the
+    particular instance of this RC. The content and structure of
+    this identifier is opaque to the RC.
+
+~~~
+"client": {
+    "instance_id": "client-541-ab"
+}
+~~~
+
+If there are no additional fields to send, the RC MAY send the instance 
+identifier as a direct reference value in lieu of the object.
+
+~~~
+"client": "client-541-ab"
+~~~
+
+When the AS receives a request with an instance identifier, the AS MUST
+ensure that the key used to [sign the request](#binding-keys) is 
+appropriate for the instance identifier.
+
+If the `instance_id` field is sent, it MUST NOT be accompanied by other fields unless such 
+fields are explicitly marked safe for inclusion alongside the instance
+identifier. 
+
+[[ Editor's note: It seems clear that an instance identifier is mutually exclusive
+with most of the fields in the request (eg, we don't want an attacker being able to
+swap out a client's registered key just by accessing the identifier). However,
+some proposed concepts might fit alongside an instance identifier that change 
+at runtime, such as device posture or another dynamic attestation. Should these
+be sent in the "client" block alongside the instance identifier, should there be
+a separate top-level block for runtime attestations, or some other mechanism? ]]
+
+If the AS does not recognize the instance identifier, the request MUST be rejected
+with an error.
+
+If the RC instance is identified in this manner, the registered key for the RC
+MAY be a symmetric key known to the AS. The RC MUST NOT send a
+symmetric key by value in the request, as doing so would expose
+the key directly instead of proving possession of it. 
+
+[[ Editor's note: In many ways, passing an instance identifier
+is analogous to OAuth 2's "client_id" parameter {{RFC6749}}, especially when
+coupled with a confidential client's registration and authentication process. See
+{{example-oauth2}} for an example. Something like this is required to make things
+easier for client developers in the common case where the AS already knows
+the client's key, and to allow symmetric keys. ]]
+
+### Identifying the RC Key {#request-key}
+
+The RC key MUST be a public key in at least one
+supported format and MUST be applicable to the
+proofing mechanism used in the request. If the key is sent in multiple
+formats, all the keys MUST be the same. The key presented in this
+field MUST be the key used to sign the request.
 
 jwk
 : Value of the public key as a JSON Web Key. MUST
@@ -1039,7 +1158,6 @@ formats using a single proofing mechanism.
 
 ~~~
     "key": {
-        "proof": "httpsig",
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -1051,11 +1169,6 @@ formats using a single proofing mechanism.
     }
 ~~~
 
-The RC MUST prove possession of any presented key by the `proof` mechanism
-associated with the key in the request.  Proof types
-are defined in [a registry TBD](#IANA) and an initial set are of methods
-are described in {{binding-keys}}. 
-
 [Continuation requests](#continue-request)
 MUST use the same key and proof method as the initial request.
 
@@ -1063,6 +1176,46 @@ MUST use the same key and proof method as the initial request.
 here beyond the presentation of the key. For example, the organization the client represents,
 or a family of client software deployed in a cluster, or the posture of the device the client
 is installed on. These all need to be separable from the client's key and the key identifier. ]]
+
+### Providing Displayable RC Information {#request-display}
+
+If the RC has additional information to display to the RO
+during any interactions at the AS, it MAY send that information in the
+"display" field. This field is a JSON object that declares information
+to present to the RO during any interactive sequences.
+
+
+name
+: Display name of the RC software
+
+uri
+: User-facing web page of the RC software
+
+logo_uri
+: Display image to represent the RC
+            software
+
+
+~~~
+    "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+    }
+~~~
+
+[[ Editor's note: would we want to support pushing a display logo by value?
+On the upside it allows for more dynamic detached clients and doesn't
+require the AS to fetch information. On the downside, 
+this is harder for the AS to enforce a policy about and could
+lead to potential exploits caused by sending binary image files. ]]
+
+Additional display fields are defined by [a registry TBD](#IANA).
+
+The AS SHOULD use these values during interaction with the RO.
+The values are for informational purposes only and MUST NOT
+be taken as authentic proof of the RC's identity or source.
+The AS MAY restrict display values to specific RC instances, as identified
+by their keys in {{request-client}}.
 
 ### Authenticating the RC {#request-key-authenticate}
 
@@ -1087,39 +1240,6 @@ The AS MAY limit which capabilities are made available to RCs
 with unknown keys. For example, the AS could have a policy saying that only
 previously-registered RCs can request particular resources, or that all
 RCs with unknown keys have to be interactively approved by an RO. 
-
-### Identifying the Client Key By Reference {#request-key-reference}
-
-If the RC has a reference for its key, the RC MAY send that
-reference handle as a string. The format of this string is determined
-by the AS and is opaque to the RC. 
-
-~~~
-
-  "key": "7C7C4AZ9KHRS6X63AJAO"
-
-~~~
-
-
-
-If the key is passed by reference, the proofing mechanism
-associated with that key reference MUST also be used by the RC,
-as described in {{binding-keys}}.
-
-If the AS does not recognize the key reference handle, the request MUST be rejected
-with an error.
-
-If the RC identifies its key by reference, the referenced key
-MAY be a symmetric key known to the AS. The RC MUST NOT send a
-symmetric key by value in the request, as doing so would expose
-the key directly instead of proving possession of it. 
-
-[[ Editor's note: In many ways, passing a key identifier by reference
-is analogous to OAuth 2's "client_id" parameter {{RFC6749}}, especially when
-coupled with a confidential client's registration and authentication process. See
-{{example-oauth2}} for an example. Something like this is required to make things
-easier for client developers in the common case where the AS already knows
-the client's key, and to allow symmetric keys. ]]
 
 ## Identifying the User {#request-user}
 
@@ -1454,7 +1574,7 @@ as described in {{interaction-pushback}}.
 ~~~
 "interact": {
     "callback": {
-       "method": "redirect",
+       "method": "push",
        "uri": "https://client.example.net/return/123455",
        "nonce": "LKLTI25DK82FX4T4QFZC"
     }
@@ -1494,7 +1614,7 @@ with an array of locale strings as defined by {{RFC5646}}.
 
 ~~~
 "interact": {
-    "ui_locales": ["en_US", "fr_CA"]
+    "ui_locales": ["en-US", "fr-CA"]
 }
 ~~~
 
@@ -1511,52 +1631,6 @@ define other interaction capabilities. There's already interest in
 defining message-based protocols like DIDCOMM and challenge-response 
 protocols like FIDO, for example. ]]
 
-
-## Providing Displayable RC Information {#request-display}
-
-If the RC has additional information to display to the RO
-during any interactions at the AS, it MAY send that information in the
-"display" field. This field is a JSON object that declares information
-to present to the RO during any interactive sequences.
-
-
-name
-: Display name of the RC software
-
-uri
-: User-facing web page of the RC software
-
-logo_uri
-: Display image to represent the RC
-            software
-
-
-~~~
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
-    }
-~~~
-
-[[ Editor's note: would we want to support pushing a display logo by value?
-On the upside it allows for more dynamic detached clients and doesn't
-require the AS to fetch information. On the downside, 
-this is harder for the AS to enforce a policy about and could
-lead to potential exploits caused by sending binary image files. ]]
-
-Additional display fields are defined by [a registry TBD](#IANA).
-
-The AS SHOULD use these values during interaction with the RO.
-The values are for informational purposes only and MUST NOT
-be taken as authentic proof of the RC's identity or source.
-The AS MAY restrict display values to specific RC instances, as identified
-by their keys in {{request-key}}.
-
-[[ Editor's note: this might make sense to combine with the "key"
-field, but some classes of more dynamic client vary those fields
-separately from the key material. We should also consider things like signed statements for
-client attestation, but that might fit better into a different
-top-level field instead of this "display" field. ]]
 
 ## Declaring RC Capabilities {#request-capabilities}
 
@@ -1648,7 +1722,7 @@ a [callback nonce](#response-interact-callback), and a [continuation handle](#re
 {
     "interact": {
         "redirect": "https://server.example.com/interact/4CF492MLVMSW9MKMXKHQ",
-         "callback": "MBDOFXG4Y5CVJCX821LH"
+        "callback": "MBDOFXG4Y5CVJCX821LH"
     },
     "continue": {
         "handle": "80UPRY5NM33OMUKMKSKU",
@@ -1790,11 +1864,7 @@ expires_in
 key
 : The key that the token is bound to, REQUIRED
               if the token is sender-constrained. The key MUST be in a format
-              described in {{request-key}}. [[ Editor's note:
-              this isn't quite right, since the request section includes a
-              "proof" field that we already have here. A possible solution
-              would be to only have a "key" field as defined above and its
-              absence indicates a bearer token? ]]
+              described in {{request-key}}.
 
 The following non-normative example shows a single bearer token with a management
 URL that has access to three described resources.
@@ -2799,7 +2869,9 @@ ts
 
 [[ Editor's note: It's not the usual practice to put additional information
 into the header of a JWS, but this keeps us from having to normalize the body
-serialization. ]]
+serialization. Alternatively, we could add all these fields to the body
+of the request, but then it gets awkward for non-body requests like
+GET/DELETE. ]]
 
 The payload of the JWS object is the serialized body of the request, and
 the object is signed according to detached JWS {{RFC7797}}. 
@@ -2821,10 +2893,6 @@ Detached-JWS: eyJiNjQiOmZhbHNlLCJhbGciOiJSUzI1NiIsImtpZCI6Inh5ei0xIn0.
   peQ
  
 {
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
-    },
     "resources": [
         "dolphin-metadata"
     ],
@@ -2836,8 +2904,9 @@ Detached-JWS: eyJiNjQiOmZhbHNlLCJhbGciOiJSUzI1NiIsImtpZCI6Inh5ei0xIn0.
             "nonce": "VJLO6A4CAYLBXHTR0KRO"
         }
     },
-    "key": {
-        "proof": "jwsd",
+    "client": {
+      "proof": "jwsd",
+      "key": {
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -2850,6 +2919,11 @@ SWmFMVCHe5mXT4cL0BwrZC6S-uu-LAx06aKwQOPwYOGOslK8WPm1yGdkaA1uF_FpS6LS
 63WYPHi_Ap2B7_8Wbw4ttzbMS_doJvuDagW8A1Ip3fXFAHtRAcKw7rdI4_Xln66hJxFe
 kpdfWdiPQddQ6Y1cK2U3obvUg7w"
         }
+      }
+      "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+      },
     }
 }
 ~~~
@@ -2891,7 +2965,9 @@ ts
 
 [[ Editor's note: It's not the usual practice to put additional information
 into the header of a JWS, but this keeps us from having to modify the body
-to use this signature method. ]]
+to use this signature method.  Alternatively, we could add all these fields to the body
+of the request, but then it gets awkward for non-body requests like
+GET/DELETE. ]]
 
 The payload of the JWS object is the JSON serialized body of the request, and
 the object is signed according to JWS and serialized into compact form {{RFC7515}}. 
@@ -2940,11 +3016,12 @@ ntQ5c7a1-gxtnXzuIKa34OekrnyqE1hmVWpeQ
 [[ Editor's note: A downside to this method is that it requires the
 content type to be something other than application/json, and it
 doesn't work against an RS without additional profiling since it
-requires things to be sent in the body. Additionally it is potentially
+requires things to be sent in the body -- you'd need to specify
+different delivery locations for a GET vs. a POST, for example.
+Additionally it is potentially
 fragile like a detached JWS since a multi-tier system could parse the
 payload and pass the parsed payload downstream with potential
-transformations. Furthermore, it doesn't protect the method or
-URL of the request in the signature. We might want to remove this in favor of
+transformations. We might want to remove this in favor of
 general-purpose HTTP signing. ]]
 
 
@@ -2986,10 +3063,6 @@ SSL_CLIENT_CERT: MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3MDUGA1UEAwwuQmV
  lwLW9b+Tfn/daUbIDctxeJneq2anQyU2znBgQl6KILDSF4eaOqlBut/KNZHHazJh
  
 {
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
-    },
     "resources": [
         "dolphin-metadata"
     ],
@@ -3001,8 +3074,13 @@ SSL_CLIENT_CERT: MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3MDUGA1UEAwwuQmV
             "nonce": "VJLO6A4CAYLBXHTR0KRO"
         }
     },
-    "key": {
-        "proof": "mtls",
+    "client": {
+      "proof": "mtls",
+      "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+      },
+      "key": {
         "cert": "MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3
 MDUGA1UEAwwuQmVzcG9rZSBFbmdpbmVlcmluZyBSb290IENlcnRpZmljYXRlIEF1d
 Ghvcml0eTELMAkGA1UECAwCTUExCzAJBgNVBAYTAlVTMRkwFwYJKoZIhvcNAQkBFg
@@ -3068,10 +3146,6 @@ iKEO7vj1APv32dsux67gZYiUpjm0wEZprjlG0a07R984KLeK1XPjXgViEwEdlirUmpVy
 T9tyEYqGrTfm5uautELgMls9sgSyE929woZ59elg
  
 {
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
-    },
     "resources": [
         "dolphin-metadata"
     ],
@@ -3083,8 +3157,13 @@ T9tyEYqGrTfm5uautELgMls9sgSyE929woZ59elg
             "nonce": "VJLO6A4CAYLBXHTR0KRO"
         }
     },
-    "key": {
-        "proof": "dpop",
+    "client": {
+      "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+      },
+      "proof": "dpop",
+      "key": {
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -3097,6 +3176,7 @@ e5mXT4cL0BwrZC6S-uu-LAx06aKwQOPwYOGOslK8WPm1yGdkaA1uF_FpS6LS63WYPHi_Ap2
 B7_8Wbw4ttzbMS_doJvuDagW8A1Ip3fXFAHtRAcKw7rdI4_Xln66hJxFekpdfWdiPQddQ6Y
 1cK2U3obvUg7w"
         }
+      }
     }
 }
 ~~~
@@ -3133,10 +3213,6 @@ Sa/Ue1yLEAMg=="]}
 Digest: SHA=oZz2O3kg5SEFAhmr0xEBbc4jEfo=
  
 {
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
-    },
     "resources": [
         "dolphin-metadata"
     ],
@@ -3148,8 +3224,13 @@ Digest: SHA=oZz2O3kg5SEFAhmr0xEBbc4jEfo=
             "nonce": "VJLO6A4CAYLBXHTR0KRO"
         }
     },
-    "key": {
-        "proof": "httpsig",
+    "client": {
+      "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+      },
+      "proof": "httpsig",
+      "key": {
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -3163,6 +3244,7 @@ ejCywKRBfctRcnhTTGNztbbDBUyDSWmFMVCHe5mXT4cL0BwrZC6S-uu-LAx
 bMS_doJvuDagW8A1Ip3fXFAHtRAcKw7rdI4_Xln66hJxFekpdfWdiPQddQ6
 Y1cK2U3obvUg7w"
         }
+      }
     }
 }
 ~~~
@@ -3217,10 +3299,6 @@ cWFkzBAr6oC4Qp7HnY_5UT6IWkRJt3efwYprWcYouOVjtRan3kEtWkaWr
 G0J4bPVnTI5St9hJYvvh7FE8JirIg
  
 {
-    "display": {
-        "name": "My Client Display Name",
-        "uri": "https://example.net/client"
-    },
     "resources": [
         "dolphin-metadata"
     ],
@@ -3232,8 +3310,13 @@ G0J4bPVnTI5St9hJYvvh7FE8JirIg
             "nonce": "VJLO6A4CAYLBXHTR0KRO"
         }
     },
-    "key": {
-        "proof": "oauthpop",
+    "client": {
+      "display": {
+        "name": "My Client Display Name",
+        "uri": "https://example.net/client"
+      },
+      "proof": "oauthpop",
+      "key": {
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -3247,6 +3330,7 @@ ejCywKRBfctRcnhTTGNztbbDBUyDSWmFMVCHe5mXT4cL0BwrZC6S-uu-LAx
 bMS_doJvuDagW8A1Ip3fXFAHtRAcKw7rdI4_Xln66hJxFekpdfWdiPQddQ6
 Y1cK2U3obvUg7w"
         }
+      }
     }
 }
 ~~~
@@ -3387,8 +3471,9 @@ Content-type: application/json
     "resources": [
         "dolphin-metadata", "some other thing"
     ],
-    "proof": "httpsig",
-    "key": {
+    "client": {
+      "proof": "httpsig",
+      "key": {
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -3396,6 +3481,7 @@ Content-type: application/json
                     "alg": "RS256",
                     "n": "kOB5rR4Jv0GMeL...."
         }
+      }
     }
 }
 ~~~
@@ -3477,7 +3563,7 @@ Detached-JWS: ejy0...
         },
         "dolphin-metadata"
     ],
-    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "client": "7C7C4AZ9KHRS6X63AJAO",
     "existing_access_token": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0"
 }
 ~~~
@@ -3521,7 +3607,7 @@ Detached-JWS: ejy0...
         },
         "dolphin-metadata"
     ],
-    "key": "7C7C4AZ9KHRS6X63AJAO"
+    "client": "7C7C4AZ9KHRS6X63AJAO"
 
 }
 ~~~
@@ -3641,6 +3727,9 @@ sure that it has the permission to do so.
 --- back
    
 # Document History {#history}
+
+- -12 
+    - Collapsed "key" and "display" fields into "client" field.
 
 - -11
     - Updated based on Design Team feedback and reviews.
@@ -3816,8 +3905,9 @@ Detached-JWS: ejy0...
             ]
         }
     ],
-    "key": {
-        "proof": "jwsd",
+    "client": {
+      "proof": "jwsd",
+      "key": {
         "jwk": {
             "kty": "RSA",
             "e": "AQAB",
@@ -3825,6 +3915,7 @@ Detached-JWS: ejy0...
             "alg": "RS256",
             "n": "kOB5rR4Jv0GMeLaY6_It_r3ORwdf8ci_JtffXyaSx8xY..."
         }
+      }
     },
     "interact": {
         "redirect": true,
@@ -3857,7 +3948,7 @@ Content-type: application/json
         "handle": "80UPRY5NM33OMUKMKSKU",
         "uri": "https://server.example.com/continue"
     },
-    "key_handle": "7C7C4AZ9KHRS6X63AJAO"
+    "client": "7C7C4AZ9KHRS6X63AJAO"
 }
 ~~~
 
@@ -3971,7 +4062,7 @@ Detached-JWS: ejy0...
     "resources": [
         "dolphin-metadata", "some other thing"
     ],
-    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "client": "7C7C4AZ9KHRS6X63AJAO",
     "interact": {
         "redirect": 255,
         "user_code": true
@@ -4114,9 +4205,11 @@ Content-type: application/json
     "resources": [
         "backend service", "nightly-routine-3"
     ],
-    "key": {
-        "proof": "mtls",
+    "client": {
+      "proof": "mtls",
+      "key": {
         "cert#S256": "bwcK0esc3ACC3DB2Y5_lESsXE8o9ltc05O89jdN-dg2"
+      }
     }
 }
 ~~~
@@ -4186,7 +4279,7 @@ Detached-JWS: ejy0...
         },
         "some other thing"
     ],
-    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "client": "7C7C4AZ9KHRS6X63AJAO",
     "user": {
         "sub_ids": [ {
             "subject_type": "email",
@@ -4337,7 +4430,7 @@ Detached-JWS: ejy0...
     "resources": [
         "read", "write", "dolphin"
     ],
-    "key": "7C7C4AZ9KHRS6X63AJAO",
+    "client": "7C7C4AZ9KHRS6X63AJAO",
     "interact": {
         "redirect": true,
         "callback": {
