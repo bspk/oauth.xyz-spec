@@ -1647,7 +1647,7 @@ by [a registry TBD](#IANA).
 
 If the RC has a reference handle from a previously granted
 request, it MAY send that reference in the "existing_grant" field. This
-field is a single string consisting of the reference handle
+field is a single string consisting of the `value` of the `access_token`
 returned in a previous request's [continuation response](#response-continue).
 
 ~~~
@@ -1725,7 +1725,12 @@ a [callback nonce](#response-interact-callback), and a [continuation handle](#re
         "callback": "MBDOFXG4Y5CVJCX821LH"
     },
     "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "proof": "jwsd",
+            "key": true
+        },
+        "handle": "",
         "uri": "https://server.example.com/tx"
     }
 }
@@ -1751,20 +1756,18 @@ an email address.
 }
 ~~~
 
-## Request Continuation Handle {#response-continue}
+## Request Continuation {#response-continue}
 
 If the AS determines that the request can be continued with
 additional requests, it responds with the "continue" field. This field
 contains a JSON object with the following properties.
 
 
-handle
-: REQUIRED. A unique reference for continuing the request.
-
 uri
 : REQUIRED. The URI at which the RC can make
-            continuation requests. This URI MAY vary per RC or ongoing
-            request, or MAY be stable at the AS. The RC MUST use this
+            continuation requests. This URI MAY vary
+            request, or MAY be stable at the AS if the AS includes
+            an access token. The RC MUST use this
             value exactly as given when making a [continuation request](#continue-request).
 
 wait
@@ -1772,18 +1775,24 @@ wait
             seconds the RC SHOULD wait after receiving this continuation
             handle and calling the URI.
 
-expires_in
-: OPTIONAL. The number of seconds in which
-            the handle will expire. The RC MUST NOT use the handle past
-            this time. The AS MUST respond to an expired handle with
-            an error. Note that the handle MAY be revoked at any point prior 
-            to its expiration.
-
+access_token
+: Optional. A unique access token for continuing the request, in the format specified
+            in {{response-token-single}}. This access token MUST be bound to the
+            RC's key used in the request and MUST NOT be a `bearer` token. 
+            This access token MUST NOT be usable at resources outside of the AS.
+            [[ Editor's note: Is this a restriction we want to enforce? ]]
+            If the AS includes an access token, the RC MUST present the access 
+            token in all requests to the continuation URI as 
+            described in {{use-access-token}}.
 
 ~~~
 {
     "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue",
         "wait": 60
     }
@@ -1793,17 +1802,27 @@ expires_in
 
 
 The RC can use the values of this field to continue the
-request as described in {{continue-request}}.
+request as described in {{continue-request}}. Note that the
+RC MUST sign all continuation requests with its key as described
+in {{key-binding}}. If the AS includes an `access_token`, the RC
+MUST present the access token in its continuation request.
 
 This field SHOULD be returned when interaction is expected, to
 allow the RC to follow up after interaction has been
 concluded.
 
-[[ Editor's note: The combination of a "handle" and "uri" really feels like
-the access token pattern. Perhaps the exact constructs for tokens could be
-re-used here instead of something special for the request continuation? Especially
-if we're using some kind of directed access token mechanism. ]]
-
+[[ Editor's note: The AS can use the optional "access_token"
+as a credential for the client to manage the grant request
+itself over time. This is in parallel with access token management
+as well as RS access in general. If the AS uses the access token,
+the continuation URL can be static, and potentially even the
+same as the initial request URL. If the AS does not use an access
+token here, it needs to use unique URLs in its response and bind the
+client's key to requests to those URLs -- or potentially only allow
+one request per client at a time? The optionality adds a layer 
+of complexity, but the client behavior is deterministic in all
+possible cases and it re-uses existing functions and structures
+instead of inventing something special just to talk to the AS. ]]
 
 ## Access Tokens {#response-token}
 
@@ -1835,7 +1854,9 @@ proof
 : REQUIRED. The proofing presentation
               mechanism used for presenting this access token to an RS. See
               {{use-access-token}} for details on possible values to this field and
-              their requirements.
+              their requirements. If the `key` value is set to `true`, this 
+              field MUST be the same as the proofing mechanism used by the RC
+              in the request.
 
 manage
 : OPTIONAL. The management URI for this
@@ -1848,7 +1869,7 @@ manage
               token issued in a request.
 
 resources
-: OPTIONAL. A description of the rights
+: RECOMMENDED. A description of the rights
               associated with this access token, as defined in 
               {{response-token-single}}. If included, this MUST reflect the rights
               associated with the issued access token. These rights MAY vary
@@ -1863,8 +1884,11 @@ expires_in
 
 key
 : The key that the token is bound to, REQUIRED
-              if the token is sender-constrained. The key MUST be in a format
-              described in {{request-key}}.
+              if the token is sender-constrained. If the boolean value `true` is used,
+              the token is bound to the [key used by the RC](#request-key) in its request 
+              for access. Otherwise, the key MUST be an object or string in a format
+              described in {{request-key}}, describing a public key to which the
+              RC can use the associated private key. 
 
 The following non-normative example shows a single bearer token with a management
 URL that has access to three described resources.
@@ -1895,6 +1919,21 @@ URL that has access to three described resources.
         ]
     }
 ~~~
+
+The following non-normative example shows a single access token bound to the RC's key, which
+was presented using the [detached JWS](#detached-jws) binding method.
+
+~~~
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "proof": "jwsd",
+        "key": true,
+        "resources": [
+            "finance", "medical"
+        ]
+    }
+~~~
+
 
 If the RC [requested multiple access tokens](#request-resource-multiple), the AS MUST NOT respond with a
 single access token structure.
@@ -2546,23 +2585,42 @@ hash value.
 
 If the RC receives a `continue` element in its response 
 {{response-continue}}, the RC can make an HTTP POST call to
-the continuation URI with a JSON object. The RC MUST send the handle
-reference from the continuation element in its request as a top-level
-JSON parameter.
+the continuation URI.
+
+The RC MUST present proof of the same [key identified in the initial request](#request-key) by
+signing the request as described in {{binding-keys}}. This requirement
+is in place whether or not the AS had previously registered the RC's
+key as described in {{request-key-authenticate}}.
+
+If the AS includes an `access_token` in the continue
+response in {{response-continue}}, the RC MUST include the access token in a manner
+appropriate for the token's binding type, as described in {{use-access-token}}.
 
 ~~~
+POST /continue HTTP/1.1
+Host: server.example.com
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+~~~
+
+The RC MAY include a request body containing parameters as described here or as
+defined [a registry TBD](#IANA). If the body is included, it MUST be a JSON
+object as described in {{request}}.
+
+~~~
+POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+
 {
-  "handle": "tghji76ytghj9876tghjko987yh"
+  "interact_ref": "4IFWWIKYBC2PQ6U56NL1"
 }
 ~~~
 
-
-
-The RC MAY include other parameters as described here or as
-defined [a registry TBD](#IANA). 
-
-[[ Editor's note: We probably want to
-allow other parameters, like modifying the resources requested or
+[[ Editor's note: We probably want to control how we allow sending
+other request parameters, like modifying the resources requested or
 providing more user information. We'll certainly have some kinds of
 specific challenge-response protocols as there's already been interest
 in that kind of thing, and the continuation request is the place where
@@ -2592,11 +2650,6 @@ If the AS determines that the RC still needs to drive interaction
 with the RQ, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) the RC [indicated in its initial request](#request-interact). Unique values such as interaction URIs
 and nonces SHOULD be re-generated and not re-used.
 
-The RC MUST present proof of the same [key identified in the initial request](#request-key) by
-signing the request as described in {{binding-keys}}. This requirement
-is in place whether or not the AS had previously registered the RC's
-key as described in {{request-key-authenticate}}.
-
 ## Continuing after a Finalized Interaction {#continue-after-interaction}
 
 If the RC has received an interaction reference from a ["callback"](#interaction-callback) message, the
@@ -2606,8 +2659,12 @@ request, but note that the RC does not send the hash back to the AS
 in the request.
 
 ~~~
+POST /continue/80UPRY5NM33OMUKMKSKU HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
 {
-  "handle": "tghji76ytghj9876tghjko987yh",
   "interact_ref": "4IFWWIKYBC2PQ6U56NL1"
 }
 ~~~
@@ -3730,6 +3787,7 @@ sure that it has the permission to do so.
 
 - -12 
     - Collapsed "key" and "display" fields into "client" field.
+    - Changed continuation to use optional access token.
 
 - -11
     - Updated based on Design Team feedback and reviews.
@@ -3945,7 +4003,11 @@ Content-type: application/json
        "callback": "MBDOFXG4Y5CVJCX821LH"
     }
     "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue"
     },
     "client": "7C7C4AZ9KHRS6X63AJAO"
@@ -3993,11 +4055,10 @@ the request as above.
 POST /continue HTTP/1.1
 Host: server.example.com
 Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
 
-
 {
-    "handle": "80UPRY5NM33OMUKMKSKU",
     "interact_ref": "4IFWWIKYBC2PQ6U56NL1"
 }
 ~~~
@@ -4032,7 +4093,11 @@ Content-type: application/json
         }]
     },
     "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue"
     }
 }
@@ -4090,7 +4155,11 @@ Content-type: application/json
         }
     },
     "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue",
         "wait": 60
     }
@@ -4118,13 +4187,8 @@ the continuation URL.
 ~~~
 POST /continue HTTP/1.1
 Host: server.example.com
-Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
-
-
-{
-    "handle": "80UPRY5NM33OMUKMKSKU"
-}
 ~~~
 
 
@@ -4139,7 +4203,11 @@ Content-type: application/json
 
 {
     "continue": {
-        "handle": "BI9QNW6V9W3XFJK4R02D",
+        "access_token": {
+            "value": "BI9QNW6V9W3XFJK4R02D",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue",
         "wait": 60
     }
@@ -4155,13 +4223,8 @@ continuation URL after a 60 second timeout using the new handle.
 ~~~
 POST /continue HTTP/1.1
 Host: server.example.com
-Content-type: application/json
+Authorization: GNAP BI9QNW6V9W3XFJK4R02D
 Detached-JWS: ejy0...
-
-
-{
-    "handle": "BI9QNW6V9W3XFJK4R02D"
-}
 ~~~
 
 
@@ -4302,7 +4365,11 @@ Content-type: application/json
 
 {
     "continue": {
-        "handle": "80UPRY5NM33OMUKMKSKU",
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue",
         "wait": 60
     }
@@ -4321,13 +4388,8 @@ the continuation URL.
 ~~~
 POST /continue HTTP/1.1
 Host: server.example.com
-Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
-
-
-{
-    "handle": "80UPRY5NM33OMUKMKSKU"
-}
 ~~~
 
 
@@ -4342,7 +4404,11 @@ Content-type: application/json
 
 {
     "continue": {
-        "handle": "BI9QNW6V9W3XFJK4R02D",
+        "access_token": {
+            "value": "BI9QNW6V9W3XFJK4R02D",
+            "proof": "jwsd",
+            "key": true
+        },
         "uri": "https://server.example.com/continue",
         "wait": 60
     }
@@ -4358,13 +4424,8 @@ continuation URL after a 60 second timeout using the new handle.
 ~~~
 POST /continue HTTP/1.1
 Host: server.example.com
-Content-type: application/json
+Authorization: GNAP BI9QNW6V9W3XFJK4R02D
 Detached-JWS: ejy0...
-
-
-{
-    "handle": "BI9QNW6V9W3XFJK4R02D"
-}
 ~~~
 
 
@@ -4463,6 +4524,7 @@ situations for the same element. Each data type provides a different syntax to e
 the same underlying semantic protocol element, which allows for optimization and 
 simplification in many common cases. 
 
+Even though JSON is often used to describe strongly typed structures, JSON on its own is naturally polymorphic. 
 In JSON, the named members of an object have no type associated with them, and any
 data type can be used as the value for any member. In practice, each member
 has a semantic type that needs to make sense to the parties creating and
@@ -4481,7 +4543,7 @@ between the two request types in the same request.
 Another form of polymorphism in JSON comes from the fact that the values within JSON
 arrays need not all be of the same JSON data type. However, within this protocol, 
 each element within the array needs to be of the same kind of semantic element for
-the collection to make sense. 
+the collection to make sense, even when the data types are different from each other.
 
 For example, each aspect of a resource request can be described using an object with multiple
 dimensional components, or the aspect can be requested using a string. In both cases, the resource
