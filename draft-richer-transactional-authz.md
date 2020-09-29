@@ -960,6 +960,111 @@ Any approved access requests are returned in the
 [multiple access token response](#response-token-multiple) structure using
 the token identifiers in the request.
 
+### Signaling Token Behavior {#request-resource-flag}
+
+While the AS is ultimately in control of how tokens are returned and bound to the RC, 
+sometimes the RC has context about what it can support that can affect the AS's
+response. This specification defines several flags that are passed as
+[resource reference strings](#request-resource-reference). 
+
+Each flag applies only to the single resource request in which it appears.
+
+Support of all flags is optional, such as any other resource reference value.
+
+multi_token
+: The RC wishes to support multiple simultaneous access tokens through the
+    token rotation process. When the RC [rotates an access token](#rotate-token),
+    the AS does not invalidate the previous access token. The old access token
+    continues to remain valid until such time as it expires or is revoked
+    through other means.
+
+split_token
+: The RC is capable of receiving [multiple access tokens](#response-token-multiple)
+    in response to any [single token request](#request-resources-single), or 
+    receiving a different number of tokens than specified in the
+    [multiple token request](#request-resources-multiple). The labels of the
+    returned additional tokens are chosen by the AS. The client MUST be able
+    to tell from the token response where and how it can use the each
+    access tokens.
+
+bind_token
+: The RC wants the issued access token to be bound to the [key the RC used](#request-key)
+    to make the request. The resulting access token MUST be bound using the same
+    `proof` mechanism used by the client with a `key` value of `true`, indicating
+    the client's presented key is to be used for binding.
+
+The AS MUST respond with any applied flags in the [token response](#response-token)
+`resources` section.
+
+In this non-normative example, the requested access token is to be bound to
+the client's key and should be kept during rotation.
+
+~~~
+    "resources": [
+        {
+            "type": "photo-api",
+            "actions": [
+                "read",
+                "write",
+                "dolphin"
+            ],
+            "locations": [
+                "https://server.example.net/",
+                "https://resource.local/other"
+            ],
+            "datatypes": [
+                "metadata",
+                "images"
+            ]
+        },
+        "read", 
+        "bind_token",
+        "multi_token"
+    ]
+~~~
+
+Additional flags can be registered in [a registry TBD](#IANA).
+
+[[ Editor's note: while these reference values are "reserved", the ultimate decider
+for what a reference means is the AS, which means an AS could arguably decide
+that one of these values means something else. Also, this kind of reservation
+potentially steps on API namespaces, which OAuth 2 is careful not to do but common
+extensions like OIDC do with their own scope definitions. However, in OIDC, several
+"scope" values have behavior similar to what's defined here, particularly "openid" turns
+on ID tokens in the response and "offline_access" signals for the return of a
+refresh token, and these can be used outside of OpenID Connect itself. However, to keep
+these flags out of the general API namespace, we could use a different syntax for
+sending them. In particular, they could be defined under a GNAP-specific "type" object,
+where all the flags are fields on the object. 
+
+~~~
+resources: [
+    {
+        type: "gnap-flags",
+        flag1: true,
+        flag2: false,
+        flag3: true ...
+    }, 
+    "reference1", 
+    "scope2", ...
+]
+~~~
+
+Alternatively, all the flags could be 
+sent in an array separate from the rest of the request. 
+
+~~~
+resources: [
+    "reference1",
+    "scope2", 
+    ["flag1", "flag2", "flag3"] ...
+]
+~~~
+
+This whole thing might also belong in an extension, as it's advanced behavior signaling
+for very specific cases. However, it seems other extensions would be likely to extend
+this kind of thing, like OIDC did with "offline_access". ]]
+
 ## Requesting User Information {#request-subject}
 
 If the RC is requesting information about the RO from
@@ -1945,7 +2050,7 @@ was presented using the [detached JWS](#detached-jws) binding method.
 
 
 If the RC [requested multiple access tokens](#request-resource-multiple), the AS MUST NOT respond with a
-single access token structure.
+single access token structure unless the RC sends the `split_token` flag as described in {{request-flags}}.
 
 [[ Editor's note: There has been interest in describing a way for the AS to tell the
 client both how and where to use the token. This kind of directed access token could
@@ -1983,14 +2088,17 @@ URL associated with it.
 
 
 Each access token corresponds to the named resources arrays in
-the RC's request. The AS MAY refuse to issue one or more of the
-requested access tokens. In such cases all of the other issued access
-tokens are included in the response except for the omitted token. The multiple access
-token response MUST be used when multiple access tokens are
-requested, even if only one access token is issued.
+the RC's [request](#request-resource-multiple). 
+
+The multiple access token response MUST be used when multiple access tokens are
+requested, even if only one access token is issued as a result of the request.
+The AS MAY refuse to issue one or more of the
+requested access tokens, for any reason. In such cases the refused token is omitted
+from the response and all of the other issued access
+tokens are included in the response the requested names appropriate names.
 
 If the RC [requested a single access token](#request-resource-single), the AS MUST NOT respond with multiple
-access tokens.
+multiple access token structure unless the RC sends the `split_token` flag as described in {{request-flags}}.
 
 Each access token MAY have different proofing mechanisms. If
 management is allowed, each access token SHOULD have different management URIs.
@@ -3797,6 +3905,8 @@ sure that it has the permission to do so.
 - -12 
     - Collapsed "key" and "display" fields into "client" field.
     - Changed continuation to use optional access token.
+    - Defined flags for special behavior of tokens.
+    - Defined "key": true to mean access token is bound to client's key.
 
 - -11
     - Updated based on Design Team feedback and reviews.
