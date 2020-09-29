@@ -694,8 +694,8 @@ A non-normative example of a grant request is below:
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
       },
-      "proof": "jwsd",
       "key": {
+        "proof": "jwsd",
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -1119,12 +1119,6 @@ key
 : The public key of the RC to be used in this request as 
     described in {{request-key}}. This field is REQUIRED.
 
-proof
-: The form of proof that the RC will use when
-    presenting the key to the AS. The valid values of this field and
-    the processing requirements for each are detailed in 
-    {{binding-keys}}. This field is REQUIRED.
-
 class_id
 : An identifier string that the AS can use to identify the
     software comprising this instance of the RC. The contents
@@ -1138,8 +1132,8 @@ display
 
 ~~~
 "client": {
-    "proof": "httpsig",
     "key": {
+        "proof": "httpsig",
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -1171,6 +1165,11 @@ of identification, authentication, and policy application.
 If the AS does not know the RC's public key ahead of time, the AS
 MAY accept or reject the request based on AS policy, attestations
 within the client request, and other mechanisms.
+
+[[ Editor's note: additional client attestation frameworks will eventually need to be addressed
+here. For example, the organization the client represents,
+or a family of client software deployed in a cluster, or the posture of the device the client
+is installed on. These all need to be separable from the client's key and potentially the instance identifier. ]]
 
 ### Identifying the RC Instance {#request-instance}
 
@@ -1237,6 +1236,12 @@ proofing mechanism used in the request. If the key is sent in multiple
 formats, all the keys MUST be the same. The key presented in this
 field MUST be the key used to sign the request.
 
+proof
+: The form of proof that the RC will use when
+    presenting the key to the AS. The valid values of this field and
+    the processing requirements for each are detailed in 
+    {{binding-keys}}. This field is REQUIRED.
+
 jwk
 : Value of the public key as a JSON Web Key. MUST
             contain an "alg" field which is used to validate the signature.
@@ -1263,6 +1268,7 @@ formats using a single proofing mechanism.
 
 ~~~
     "key": {
+        "proof": "jwsd",
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -1276,11 +1282,6 @@ formats using a single proofing mechanism.
 
 [Continuation requests](#continue-request)
 MUST use the same key and proof method as the initial request.
-
-[[ Editor's note: additional client attestation frameworks will eventually need to be addressed
-here beyond the presentation of the key. For example, the organization the client represents,
-or a family of client software deployed in a cluster, or the posture of the device the client
-is installed on. These all need to be separable from the client's key and the key identifier. ]]
 
 ### Providing Displayable RC Information {#request-display}
 
@@ -1415,7 +1416,6 @@ is opaque to the RC.
 
 ~~~
 "user": "XUT2MFM1XBIKJKSDU8QM"
-
 ~~~
 
 User reference identifiers are not intended to be human-readable
@@ -1447,23 +1447,23 @@ There is no preference order specified in this request. An AS MAY
 its capabilities and what is allowed to fulfill the request. This specification
 defines the following interaction capabilities:
 
-`redirect`
+redirect
 : Indicates that the RC can direct the RQ to an arbitrary URL
     at the AS for interaction. {{request-interact-redirect}}
 
-`app`
+app
 : Indicates that the RC can launch an application on the RQ's
     device for interaction. {{request-interact-app}}
 
-`callback`
+callback
 : Indicates that the RC can receive a callback from the AS
     after interaction with the RO has concluded. {{request-interact-callback}}
 
-`user_code`
+user_code
 : Indicates that the RC can communicate a human-readable short
     code to the RQ for use with a stable URL at the AS. {{request-interact-usercode}}
 
-`ui_locales`
+ui_locales
 : Indicates the RQ's preferred locales that the AS can use
     during interaction, particularly before the RO has 
     authenticated. {{request-interact-locale}}
@@ -1841,7 +1841,6 @@ a [callback nonce](#response-interact-callback), and a [continuation handle](#re
     "continue": {
         "access_token": {
             "value": "80UPRY5NM33OMUKMKSKU",
-            "proof": "jwsd",
             "key": true
         },
         "handle": "",
@@ -1858,7 +1857,7 @@ an email address.
 {
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L"
     },
     "subject": {
@@ -1890,7 +1889,7 @@ wait
             handle and calling the URI.
 
 access_token
-: Optional. A unique access token for continuing the request, in the format specified
+: RECOMMENDED. A unique access token for continuing the request, in the format specified
             in {{response-token-single}}. This access token MUST be bound to the
             RC's key used in the request and MUST NOT be a `bearer` token. 
             This access token MUST NOT be usable at resources outside of the AS.
@@ -1904,7 +1903,6 @@ access_token
     "continue": {
         "access_token": {
             "value": "80UPRY5NM33OMUKMKSKU",
-            "proof": "jwsd",
             "key": true
         },
         "uri": "https://server.example.com/continue",
@@ -1964,14 +1962,6 @@ value
               limited to ASCII characters to facilitate transmission over HTTP
               headers within other protocols without requiring additional encoding.
 
-proof
-: REQUIRED. The proofing presentation
-              mechanism used for presenting this access token to an RS. See
-              {{use-access-token}} for details on possible values to this field and
-              their requirements. If the `key` value is set to `true`, this 
-              field MUST be the same as the proofing mechanism used by the RC
-              in the request.
-
 manage
 : OPTIONAL. The management URI for this
               access token. If provided, the RC MAY manage its access
@@ -1997,12 +1987,15 @@ expires_in
               AS or RS at any point prior to its expiration.
 
 key
-: The key that the token is bound to, REQUIRED
-              if the token is sender-constrained. If the boolean value `true` is used,
+: REQUIRED. The key that the token is bound to. If the boolean value `true` is used,
               the token is bound to the [key used by the RC](#request-key) in its request 
-              for access. Otherwise, the key MUST be an object or string in a format
+              for access. If the boolean value `false` is used,
+              the token is a bearer token with no key bound to it.
+              Otherwise, the key MUST be an object or string in a format
               described in {{request-key}}, describing a public key to which the
-              RC can use the associated private key. 
+              RC can use the associated private key. The RC MUST be able to
+              dereference or process the key information in order to be able
+              to sign the request.
 
 The following non-normative example shows a single bearer token with a management
 URL that has access to three described resources.
@@ -2010,7 +2003,7 @@ URL that has access to three described resources.
 ~~~
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
         "resources": [
             {
@@ -2040,7 +2033,6 @@ was presented using the [detached JWS](#detached-jws) binding method.
 ~~~
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "jwsd",
         "key": true,
         "resources": [
             "finance", "medical"
@@ -2075,12 +2067,12 @@ URL associated with it.
     "multiple_access_tokens": {
         "token1": {
             "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-            "proof": "bearer",
+            "key": false,
             "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L"
         },
         "token2": {
             "value": "UFGLO2FDAFG7VGZZPJ3IZEMN21EVU71FHCARP4J1",
-            "proof": "bearer"
+            "key": false
         }
     }
 ~~~
@@ -2349,13 +2341,13 @@ following dynamic handle returns, additional handles can be defined in
 [a registry TBD](#IANA).
 
 
-key_handle
-: A value used to represent the information
-            in the key object that the RC can use in a future request, as
+instance_id
+: A string value used to represent the information
+            in the `client` object that the RC can use in a future request, as
             described in {{request-key-reference}}.
 
 user_handle
-: A value used to represent the current
+: A string value used to represent the current
             user. The RC can use in a future request, as described in
             {{request-user-reference}}.
 
@@ -2366,10 +2358,10 @@ access token.
 ~~~
 {
     "user_handle": "XUT2MFM1XBIKJKSDU8QM",
-    "key_handle": "7C7C4AZ9KHRS6X63AJAO",
+    "instance_id": "7C7C4AZ9KHRS6X63AJAO",
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer"
+        "key": false
     }
 }
 ~~~
@@ -2379,12 +2371,38 @@ allows for an inline version of dynamic registration without needing
 to go through a discrete registration step, for clients where that
 makes sense. Currently this is entirely up to the AS to decide when
 to issue these, but maybe the client should signal that it can receive
-these handles as part of the request? Since the client is the component
+these handles as part of the request? The new "token flags" construct
+in {{request-token-flags}} almost gets at that, but for a different part
+of the  request structure. Since the client is the component
 that will know if it's in a position to make use of such reference handles
 in the future (like a mobile app) or if it's just going to evaporate
 at the end of a session (like an SPA). Ultimately we need to deal with
 a range of dynamism, not just the "pre-registered" vs. "non-registered"
 use cases that OAuth forces us in to. ]]
+
+[[ Editor's note: The client-bound "instance_id" could serve as the hook
+we would need for RFC7592 style dynamic client management, including additional
+elements like key rotation. If the AS returns an object instead of a string
+here, that could include everything that the client would need in order to
+make REST-style management calls, similar to token management. 
+
+~~~
+{
+    "client": {
+        "instance_id": "7C7C4AZ9KHRS6X63AJAO",
+        "manage": "https://example.server.com/client/7C7C4AZ9KHRS6X63AJAO",
+        "access_token": {
+            "value": "4TB8N6BW7OZB8CDFONP219RP1LT0OS9M2PMHKUR6",
+            "key": true
+        }
+    }
+}
+~~~
+
+The client would sign all requests with its key and use the presented access token.
+A "POST" or "PATCH" request would update client information, including having a 
+method for key rotation using nested signatures. A "DELETE" request would
+un-register the client, etc. ]]
 
 ## Error response {#error-response}
 
@@ -2417,10 +2435,8 @@ too_fast
 : The RC did not respect the timeout in the
             wait response.
 
-unknown_handle
-: The request referenced an unknown
-            handle.
-
+unknown_request
+: The request referenced an unknown ongoing access request.
 
 [[ Editor's note: I think we will need a more robust error
 mechanism, and we need to be more clear about what error states are
@@ -2764,8 +2780,14 @@ MUST NOT make an additional continuation request. If a RC does so,
 the AS MUST return an error.
 
 If the AS determines that the RC still needs to drive interaction
-with the RQ, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) the RC [indicated in its initial request](#request-interact). Unique values such as interaction URIs
+with the RQ, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) 
+the RC [indicated in its initial request](#request-interact). Unique values such as interaction URIs
 and nonces SHOULD be re-generated and not re-used.
+
+
+[[ Editor's note: Additional methods could be defined on the continuation
+endpoint for different functions, like DELETE for canceling a grant request. ]]
+
 
 ## Continuing after a Finalized Interaction {#continue-after-interaction}
 
@@ -2868,7 +2890,7 @@ MUST use this new URL to manage the new access token.
 {
     "access_token": {
         "value": "FP6A8H6HY37MH13CK76LBZ6Y1UADG6VEUPEER5H2",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
         "resources": [
             {
@@ -2936,10 +2958,10 @@ any reason, the token management function is specifically for the RC's use.
 # Using Access Tokens {#use-access-token}
 
 The method the RC uses to send an access token to the RS depends on the value of the
-"proof" parameter in [the access token response](#response-token-single).
+"key" and "proof" parameters in [the access token response](#response-token-single).
 
-If this value is "bearer", the access token is sent using the HTTP
-Header method defined in {{RFC6750}}.
+If the key value is the boolean `false`, the access token is a bearer token
+sent using the HTTP Header method defined in {{RFC6750}}.
 
 ~~~
 Authorization: Bearer OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0
@@ -2948,9 +2970,14 @@ Authorization: Bearer OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0
 The form parameter and query parameter methods of {{RFC6750}} MUST NOT
 be used.
 
-If the "proof" value is any other string, the access token is sent
-using the HTTP authorization scheme "GNAP" along with a key proof as
-described in {{binding-keys}} for the key bound to the
+If the "key" value is the boolean `true`, the access token MUST be sent
+to the RS using the same key and proofing mechanism that the RC used
+in its initial request.
+
+If the "key" value is an object, the value of the "proof" field within
+the key indicates the particular proofing mechanism to use.
+The access token is sent using the HTTP authorization scheme "GNAP" along with 
+a key proof as described in {{binding-keys}} for the key bound to the
 access token. For example, a "jwsd"-bound access token is sent as
 follows:
 
@@ -2966,7 +2993,8 @@ header type for differently-bound access tokens. Perhaps instead these
 values should somehow reflect the key binding types. Maybe there can be
 multiple fields after the "GNAP" keyword using structured headers? Or a
 set of derived headers like GNAP-mtls? This might also be better as a
-separate specification, like it was in OAuth 2. ]]
+separate specification, like it was in OAuth 2. However, access tokens
+should be able to use any key binding mechanisms here, plus bearer. ]]
 
 
 # Binding Keys {#binding-keys}
@@ -3646,8 +3674,8 @@ Content-type: application/json
         "dolphin-metadata", "some other thing"
     ],
     "client": {
-      "proof": "httpsig",
       "key": {
+        "proof": "httpsig",
         "jwk": {
                     "kty": "RSA",
                     "e": "AQAB",
@@ -4083,8 +4111,8 @@ Detached-JWS: ejy0...
         }
     ],
     "client": {
-      "proof": "jwsd",
       "key": {
+        "proof": "jwsd",
         "jwk": {
             "kty": "RSA",
             "e": "AQAB",
@@ -4110,8 +4138,8 @@ Detached-JWS: ejy0...
 The AS processes the request and determines that the RO needs to
 interact. The AS returns the following response giving the client the
 information it needs to connect. The AS has also indicated to the
-client that it can use the given key handle to identify itself in
-future calls.
+client that it can use the given instance identifier to identify itself in
+[future requests](#request-client-reference).
 
 ~~~
 Content-type: application/json
@@ -4124,12 +4152,11 @@ Content-type: application/json
     "continue": {
         "access_token": {
             "value": "80UPRY5NM33OMUKMKSKU",
-            "proof": "jwsd",
             "key": true
         },
         "uri": "https://server.example.com/continue"
     },
-    "client": "7C7C4AZ9KHRS6X63AJAO"
+    "instance_id": "7C7C4AZ9KHRS6X63AJAO"
 }
 ~~~
 
@@ -4193,7 +4220,7 @@ Content-type: application/json
 {
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
         "resources": [{
             "actions": [
@@ -4214,7 +4241,6 @@ Content-type: application/json
     "continue": {
         "access_token": {
             "value": "80UPRY5NM33OMUKMKSKU",
-            "proof": "jwsd",
             "key": true
         },
         "uri": "https://server.example.com/continue"
@@ -4274,12 +4300,7 @@ Content-type: application/json
         }
     },
     "continue": {
-        "access_token": {
-            "value": "80UPRY5NM33OMUKMKSKU",
-            "proof": "jwsd",
-            "key": true
-        },
-        "uri": "https://server.example.com/continue",
+        "uri": "https://server.example.com/continue/80UPRY5NM33OMUKMKSKU",
         "wait": 60
     }
 }
@@ -4301,12 +4322,12 @@ the request. Once the request has been approved, the AS displays to
 the user a message to return to their device.
 
 Meanwhile, the client periodically polls the AS every 60 seconds at
-the continuation URL.
+the continuation URL. The client signs the request using the
+same key and method that it did in the first request.
 
 ~~~
-POST /continue HTTP/1.1
+POST /continue/80UPRY5NM33OMUKMKSKU HTTP/1.1
 Host: server.example.com
-Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
 ~~~
 
@@ -4322,12 +4343,7 @@ Content-type: application/json
 
 {
     "continue": {
-        "access_token": {
-            "value": "BI9QNW6V9W3XFJK4R02D",
-            "proof": "jwsd",
-            "key": true
-        },
-        "uri": "https://server.example.com/continue",
+        "uri": "https://server.example.com/continue/BI9QNW6V9W3XFJK4R02D",
         "wait": 60
     }
 }
@@ -4335,21 +4351,21 @@ Content-type: application/json
 
 
 
-Note that the continuation handle has been rotated since it was
+Note that the continuation URL has been rotated since it was
 used by the client to make this call. The client polls the
 continuation URL after a 60 second timeout using the new handle.
 
 ~~~
-POST /continue HTTP/1.1
+POST /continue/BI9QNW6V9W3XFJK4R02D HTTP/1.1
 Host: server.example.com
-Authorization: GNAP BI9QNW6V9W3XFJK4R02D
+Authorization: GNAP 
 Detached-JWS: ejy0...
 ~~~
 
 
 
-The AS retrieves the pending request based on the handle and
-determines that it has been approved and it issues an access
+The AS retrieves the pending request based on the URL,
+determines that it has been approved, and issues an access
 token.
 
 ~~~
@@ -4358,7 +4374,7 @@ Content-type: application/json
 {
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
         "resources": [
             "dolphin-metadata", "some other thing"
@@ -4388,8 +4404,8 @@ Content-type: application/json
         "backend service", "nightly-routine-3"
     ],
     "client": {
-      "proof": "mtls",
       "key": {
+        "proof": "mtls",
         "cert#S256": "bwcK0esc3ACC3DB2Y5_lESsXE8o9ltc05O89jdN-dg2"
       }
     }
@@ -4407,7 +4423,7 @@ Content-type: application/json
 {
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
         "resources": [
             "backend service", "nightly-routine-3"
@@ -4486,7 +4502,6 @@ Content-type: application/json
     "continue": {
         "access_token": {
             "value": "80UPRY5NM33OMUKMKSKU",
-            "proof": "jwsd",
             "key": true
         },
         "uri": "https://server.example.com/continue",
@@ -4525,7 +4540,6 @@ Content-type: application/json
     "continue": {
         "access_token": {
             "value": "BI9QNW6V9W3XFJK4R02D",
-            "proof": "jwsd",
             "key": true
         },
         "uri": "https://server.example.com/continue",
@@ -4559,7 +4573,7 @@ Content-type: application/json
 {
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "proof": "bearer",
+        "key": false,
         "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
         "resources": [
             "dolphin-metadata", "some other thing"
