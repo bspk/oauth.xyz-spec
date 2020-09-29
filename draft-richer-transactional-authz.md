@@ -1541,6 +1541,15 @@ Requests to the callback URI MUST be processed as described in
 presentation of an interaction callback reference as described in
 {{continue-after-interaction}}.
 
+[[ Editor's note: The callback information could alternatively be combined
+with other methods like "redirect", but this would require each method to
+define its own set of rules about how callbacks can be used. Combining would
+also allow a client to declare that it expects a callback in response to
+one kind of interaction method but not others, and include multiple combinations
+at once. This could be accomplished by allowing the client to "bundle" interaction
+parameters together, if desirable -- for example, if "interact" were an array, the 
+client would accept any combination represented by one object. ]]
+
 #### Receive an HTTP Callback Through the Browser {#request-interact-callback-redirect}
 
 A callback `method` value of `redirect` indicates that the RC
