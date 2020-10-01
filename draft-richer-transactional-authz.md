@@ -1869,7 +1869,6 @@ a [callback nonce](#response-interact-callback), and a [continuation handle](#re
             "value": "80UPRY5NM33OMUKMKSKU",
             "key": true
         },
-        "handle": "",
         "uri": "https://server.example.com/tx"
     }
 }
