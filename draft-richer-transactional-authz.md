@@ -87,9 +87,10 @@ working group and submits all content to the working group for consensus buildin
 
 # Protocol
 
-This protocol allows a piece of software to request delegated
-authorization to an API, protected by an authorization server usually on
-behalf of a resource owner. The user operating the software may interact
+This protocol allows a piece of software, the resource client, to request delegated
+authorization to resource servers and direct information. This delegation is
+facilitated by an authorization server usually on
+behalf of a resource owner. The requesting party operating the software may interact
 with the authorization server to authenticate, provide consent, and
 authorize the request.
 
@@ -123,12 +124,12 @@ Authorization Server (AS)
 
 Resource Client (RC, aka "client")
 : Requests tokens from the AS and uses tokens at the RS.
-    The RC is identified by its key, and can
+    An instance of the RC software is identified by its key, which can
     be known to the AS prior to the first request. The AS determines
     which policies apply to a given RC, including what it can
-    request and on whose behalf.
+    request and on whose behalf. 
 
-Resource Server (RS)
+Resource Server (RS, aka "API")
 : Accepts tokens from the RC issued by the AS and serves delegated resources
     on behalf of the RO. There could be multiple RSs protected
     by the AS that the RC will call.
@@ -185,6 +186,31 @@ of what activities and expectations a particular role covers. In particular,
 the AS might be formally decomposed into delegation components, that the
 client talks to, and interaction components, that the user talks to. ]]
 
+## Elements {#elements}
+
+In addition to the roles above, the protocol also involves several 
+elements that are acted upon by the roles throughout the process.
+
+Access Token
+: A credential representing a set of access rights
+delegated to the RC. The access token is created by the AS, consumed
+and verified by the RS, and issued to and carried by the RC. The contents
+and format of the access token are opaque to the RC.
+
+Key
+: A cryptographic element binding a request to the
+holder of the key. Access tokens and RC's can be associated with
+specific keys.
+
+Subject Information
+: Information that is returned directly to the RC from the AS
+without the RC making a separate call to an RS.
+
+[[ Editor's note: What other core elements need an introduction 
+here? These aren't roles to be taken on by different parties, nor
+are they descriptions of the possible configurations of parties, but
+these are still important moving parts within the protocol. ]]
+
 ## Sequences {#sequence}
 
 The GNAP protocol can be used in a variety of ways to allow the core
@@ -227,7 +253,7 @@ protocol flow.
         |        |--(9)->|               |       |            |
         |        |<-(10)-|               |       |            |
         |        |--------------(11)------------>|            |
-        |        |       |               |<-(12)-|            |
+        |        |       |               |<~(12)~|            |
         |        |-(13)->|               |       |            |
         |        |       |               |       |            |
         +--------+       +---------------+       +------------+
@@ -973,16 +999,16 @@ Support of all flags is optional, such as any other resource reference value.
 
 multi_token
 : The RC wishes to support multiple simultaneous access tokens through the
-    token rotation process. When the RC [rotates an access token](#rotate-token),
+    token rotation process. When the RC [rotates an access token](#rotate-access-token),
     the AS does not invalidate the previous access token. The old access token
     continues to remain valid until such time as it expires or is revoked
     through other means.
 
 split_token
 : The RC is capable of receiving [multiple access tokens](#response-token-multiple)
-    in response to any [single token request](#request-resources-single), or 
+    in response to any [single token request](#request-resource-single), or 
     receiving a different number of tokens than specified in the
-    [multiple token request](#request-resources-multiple). The labels of the
+    [multiple token request](#request-resource-multiple). The labels of the
     returned additional tokens are chosen by the AS. The client MUST be able
     to tell from the token response where and how it can use the each
     access tokens.
@@ -1916,7 +1942,7 @@ access_token
 The RC can use the values of this field to continue the
 request as described in {{continue-request}}. Note that the
 RC MUST sign all continuation requests with its key as described
-in {{key-binding}}. If the AS includes an `access_token`, the RC
+in {{binding-keys}}. If the AS includes an `access_token`, the RC
 MUST present the access token in its continuation request.
 
 This field SHOULD be returned when interaction is expected, to
@@ -2042,7 +2068,7 @@ was presented using the [detached JWS](#detached-jws) binding method.
 
 
 If the RC [requested multiple access tokens](#request-resource-multiple), the AS MUST NOT respond with a
-single access token structure unless the RC sends the `split_token` flag as described in {{request-flags}}.
+single access token structure unless the RC sends the `split_token` flag as described in {{request-resource-flag}}.
 
 [[ Editor's note: There has been interest in describing a way for the AS to tell the
 client both how and where to use the token. This kind of directed access token could
@@ -2090,7 +2116,7 @@ from the response and all of the other issued access
 tokens are included in the response the requested names appropriate names.
 
 If the RC [requested a single access token](#request-resource-single), the AS MUST NOT respond with multiple
-multiple access token structure unless the RC sends the `split_token` flag as described in {{request-flags}}.
+multiple access token structure unless the RC sends the `split_token` flag as described in {{request-resource-flag}}.
 
 Each access token MAY have different proofing mechanisms. If
 management is allowed, each access token SHOULD have different management URIs.
@@ -2317,10 +2343,13 @@ Many parts of the RC's request can be passed as either a value
 or a reference. The use of a reference in place of a value allows
 for a client to optimize requests to the AS.
 
-Some references, such as for the [RC's keys](#request-key-reference) 
+Some references, such as for the [RC instance's identity](#request-instance) 
 or the [requested resources](#request-resource-reference), can be managed statically through an
-admin console or developer portal provided by the AS or RS. If
-desired, the AS MAY also generate and return some of these references
+admin console or developer portal provided by the AS or RS. The developer
+of the RC can include these values in their code for a more
+efficient and compact request.
+
+If desired, the AS MAY also generate and return some of these references
 dynamically to the RC in its response to facilitate multiple
 interactions with the same software. The RC SHOULD use these
 references in future requests in lieu of sending the associated data
@@ -2344,7 +2373,7 @@ following dynamic handle returns, additional handles can be defined in
 instance_id
 : A string value used to represent the information
             in the `client` object that the RC can use in a future request, as
-            described in {{request-key-reference}}.
+            described in {{request-instance}}.
 
 user_handle
 : A string value used to represent the current
@@ -2372,7 +2401,7 @@ to go through a discrete registration step, for clients where that
 makes sense. Currently this is entirely up to the AS to decide when
 to issue these, but maybe the client should signal that it can receive
 these handles as part of the request? The new "token flags" construct
-in {{request-token-flags}} almost gets at that, but for a different part
+in {{request-resource-flag}} almost gets at that, but for a different part
 of the  request structure. Since the client is the component
 that will know if it's in a position to make use of such reference handles
 in the future (like a mobile app) or if it's just going to evaporate
@@ -2757,7 +2786,8 @@ other request parameters, like modifying the resources requested or
 providing more user information. We'll certainly have some kinds of
 specific challenge-response protocols as there's already been interest
 in that kind of thing, and the continuation request is the place where
-that would fit. ]]
+that would fit. Ultimately, nearly anything in the "request" object
+could be argued for inclusion here. ]]
 
 If a "wait" parameter was included in the continuation response, the
 RC MUST NOT call the continuation URI prior to waiting the number of
@@ -2786,8 +2816,9 @@ and nonces SHOULD be re-generated and not re-used.
 
 
 [[ Editor's note: Additional methods could be defined on the continuation
-endpoint for different functions, like DELETE for canceling a grant request. ]]
-
+endpoint for different functions, like DELETE for canceling a grant request.
+The client's continuation request fit POST fine though as it's a non-idempotent
+request (even without a body). 
 
 ## Continuing after a Finalized Interaction {#continue-after-interaction}
 
@@ -2823,9 +2854,10 @@ the AS does not return a new "continue" response element, the RC
 MUST NOT make an additional continuation request. If the RC does so,
 the AS MUST return an error.
 
-[[ Editor's note: There is significant overlap here with the functionality
-that allows the rotation of an individual access token in the next main 
-section. It seems like this would still be needed to modify the entire request,
+[[ Editor's note: The ability to continue a grant to get a new access token
+with the same rights has some potential overlap here with the functionality
+that allows the rotation of an individual access token in {{rotate-access-token}}.
+It seems like this would still be needed to modify the entire request,
 but for the common case where you've got a single access token in the
 response, you've got two ways to do almost the same thing, which is
 confusing for client developers. We need to discuss how best to manage
@@ -2852,6 +2884,18 @@ same [key identified in the initial request](#request-key) as described in {{bin
 The AS MUST validate the proof and assure that it is associated with
 either the token itself or the RC the token was issued to, as
 appropriate for the token's presentation type.
+
+[[ Editor's note: Should we allow for "update" to an access token
+by the client posting new information from a "request"? It seems this might
+make things weird since an access token is generally considered
+an unchanging thing, and the client could always request a new
+access token if they're allowed to continue the grant request post-issuance
+as in {{continue-after-tokens}}. There's also a possibility of
+being able to "read" a token's state, much like token introspection
+but using the token's/client's key instead of the RS key. But
+would a client need to "read" a token state after issuance? Is there
+a security risk to offering that functionality? Introspection is
+nearly always relegated to RS calls. ]]
 
 ## Rotating the Access Token {#rotate-access-token}
 
@@ -3935,6 +3979,8 @@ sure that it has the permission to do so.
     - Changed continuation to use optional access token.
     - Defined flags for special behavior of tokens.
     - Defined "key": true to mean access token is bound to client's key.
+    - Defined "key": false to indicate an access token.
+    - Added "Elements" section to list and discuss non-role parts of the protocol.
 
 - -11
     - Updated based on Design Team feedback and reviews.
@@ -4139,7 +4185,7 @@ The AS processes the request and determines that the RO needs to
 interact. The AS returns the following response giving the client the
 information it needs to connect. The AS has also indicated to the
 client that it can use the given instance identifier to identify itself in
-[future requests](#request-client-reference).
+[future requests](#request-instance).
 
 ~~~
 Content-type: application/json
@@ -4423,8 +4469,8 @@ Content-type: application/json
 {
     "access_token": {
         "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
-        "key": false,
-        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L",
+        "key": true,
+        "manage": "https://server.example.com/token",
         "resources": [
             "backend service", "nightly-routine-3"
         ]
