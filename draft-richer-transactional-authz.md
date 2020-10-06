@@ -1122,6 +1122,20 @@ AS policies, or [assertions presented by the RC](#request-user). If
 this is determined positively, the AS MAY [return the RO's information in its response](#response-subject)
 as requested. 
 
+Subject identifiers requested by the RC serve only to identify 
+the RO in the context of the AS and MUST NOT be used as communication
+channels by the RC, as discussed in {{return-subject}}. One method of 
+requesting communication channels and other identity claims are discussed
+in {{request-oidc-claims}}, but the details are outside the scope of
+this specification. 
+
+The AS SHOULD NOT re-use subject identifiers for multiple different ROs.
+
+[[ Editor's Note: What we're really saying here is that "even if the AS
+gives you an email address to identify the user, that isn't a claim that this
+is a valid email address for that current user, so don't try to email them."
+In order to get a workable email address, or anything that]]
+
 Note: the "sub_ids" and "assertions" request fields are independent of
 each other, and a returned assertion MAY omit a requested subject
 identifier. 
@@ -1176,6 +1190,8 @@ display
     }
 }
 ~~~
+
+Additional fields are defined in [a registry TBD](#iana).
 
 The RC MUST prove possession of any presented key by the `proof` mechanism
 associated with the key in the request.  Proof types
@@ -1830,13 +1846,22 @@ way that it would with an OAuth 2 based authorization request.
 Note that because this is an independent query object, the `claims` value can augment or alter
 other portions of the request, namely the `resources` and `subject` fields. This query language uses
 the fields in the top level of the object to indicate the target for any requested claims. For instance, the
-`userinfo` target indicates that an access token would grant access to the given claims at the
+`userinfo` target indicates that a returned access token would grant access to the given claims at the
 UserInfo Endpoint, while the `id_token` target indicates that the claims would be returned in an
-ID Token as described in {{response-subject}}.
+ID Token as described in {{response-subject}}. 
 
-[[ Editor's note: I'm not a fan of GNAP defining how OIDC would work and would rather that
+[[ Editor's note: in order to use the "claims"  parameter as defined in OIDC, we
+have to violate the principle of orthogonality in {{request-extending}}. 
+An alternative approach would be to split up the portions of the claims request, so that "id_token" claims
+would go into the "subject" field and "userinfo" claims would go into the "resources" request, but this violates
+the original field definition from OIDC  and gets into the territory of defining an identity schema request. 
+This approach would also invalidate extensions to the "claims" standard as each "target" would need to
+have its own separate mapping to some part of the GNAP protocol. ]]
+
+[[ Editor's note: I'm not a fan of GNAP defining how OIDC would work at all and would rather that
 work be done by the OIDF in an extension. However, I think it is important for discussion to see this kind
-of thing in context with the rest of the protocol, for now. ]]
+of thing in context with the rest of the protocol, for now. In the future, I would anticipate
+this would be defined by the OIDF as a relatively small but robust identity layer on top of GNAP. ]]
 
 ## Extending The Grant Request {#request-extending}
 
@@ -2114,8 +2139,8 @@ requested access tokens, for any reason. In such cases the refused token is omit
 from the response and all of the other issued access
 tokens are included in the response the requested names appropriate names.
 
-If the RC [requested a single access token](#request-resource-single), the AS MUST NOT respond with multiple
-multiple access token structure unless the RC sends the `split_token` flag as described in {{request-resource-flag}}.
+If the RC [requested a single access token](#request-resource-single), the AS MUST NOT respond with the multiple
+access token structure unless the RC sends the `split_token` flag as described in {{request-resource-flag}}.
 
 Each access token MAY have different proofing mechanisms. If
 management is allowed, each access token SHOULD have different management URIs.
@@ -2331,7 +2356,29 @@ updated_at
 }
 ~~~
 
+The AS MUST return the `subject` field only in cases where the AS is sure that
+the RO and the RQ are the same party. This can be accomplished through some forms of
+[interaction with the RO](#user-interaction).
 
+Subject identifiers returned by the AS SHOULD uniquely identify the RO at the
+AS. Some forms of subject identifier are opaque to the RC (such as the issuer and
+subject pair), while others forms (such as email address and phone number) are
+intended to allow the RC to correlate the identifier with other information
+at the RC. The RC MUST NOT use any returned subject identifiers for communication
+purposes. That is, a subject identifier returned in the format of an email address or 
+a phone number only identifies the RO to the AS and does not indicate that the
+AS has validated that the represented email address or phone number in the identifier
+is suitable for communication with the current user. To get such information,
+the RC MUST use an identity protocol to request and receive additional identity
+claims. While {{request-oidc-claims}} specifies one such method, the details
+of an identity protocol and associated schema are outside the scope of this
+specification.
+
+[[ Editor's note: This will need substantial privacy considerations, as this is
+releasing information about the current user that could be tied to other
+information at the RC or elsewhere. To facilitate this, should we have another
+form of identifier that's a globally unique identifier of some form? DIDs could
+facilitate that kind of namespace. ]]
 
 Extensions to this specification MAY define additional response
 properties in [a registry TBD](#IANA).
@@ -2357,7 +2404,9 @@ value. These handles are intended to be used on future requests.
 Dynamically generated handles are string values that MUST be
 protected by the RC as secrets. Handle values MUST be unguessable
 and MUST NOT contain any sensitive information. Handle values are
-opaque to the RC. [[ Editor's note: these used to be objects to
+opaque to the RC. 
+
+[[ Editor's note: these constructs used to be objects to
 allow for expansion to future elements, like a management URI or
 different presentation types or expiration, but those weren't used in
 practice. Is that desirable anymore or is collapsing them like this
@@ -3320,12 +3369,12 @@ SSL_CLIENT_CERT: MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3MDUGA1UEAwwuQmV
         }
     },
     "client": {
-      "proof": "mtls",
       "display": {
         "name": "My Client Display Name",
         "uri": "https://example.net/client"
       },
       "key": {
+        "proof": "mtls",
         "cert": "MIIEHDCCAwSgAwIBAgIBATANBgkqhkiG9w0BAQsFADCBmjE3
 MDUGA1UEAwwuQmVzcG9rZSBFbmdpbmVlcmluZyBSb290IENlcnRpZmljYXRlIEF1d
 Ghvcml0eTELMAkGA1UECAwCTUExCzAJBgNVBAYTAlVTMRkwFwYJKoZIhvcNAQkBFg
@@ -3972,6 +4021,9 @@ sure that it has the permission to do so.
 --- back
    
 # Document History {#history}
+
+- -13
+    - Clarified that "subject" request and response aren't for identity claims, just identifiers.
 
 - -12 
     - Collapsed "key" and "display" fields into "client" field.
