@@ -489,7 +489,7 @@ the AS.
     the request in a sufficient amount of time and return an appropriate
     error to the RC.
 
-10. The RC continues to [poll the AS](#continue-request) with the new
+10. The RC continues to [poll the AS](#continue-poll) with the new
     continuation information in (9).
     
 11. If the request has been authorized, the AS grants access to the information
@@ -565,7 +565,7 @@ The RC polls the AS while it is waiting for the RO to authorize the request.
     the request in a sufficient amount of time and return an appropriate
     error to the RC.
 
-8. The RC continues to [poll the AS](#continue-request) with the new 
+8. The RC continues to [poll the AS](#continue-poll) with the new 
     continuation information from (7).
     
 9. If the request has been authorized, the AS grants access to the information
@@ -1124,7 +1124,7 @@ as requested.
 
 Subject identifiers requested by the RC serve only to identify 
 the RO in the context of the AS and MUST NOT be used as communication
-channels by the RC, as discussed in {{return-subject}}. One method of 
+channels by the RC, as discussed in {{response-subject}}. One method of 
 requesting communication channels and other identity claims are discussed
 in {{request-oidc-claims}}, but the details are outside the scope of
 this specification. 
@@ -1191,7 +1191,7 @@ display
 }
 ~~~
 
-Additional fields are defined in [a registry TBD](#iana).
+Additional fields are defined in [a registry TBD](#IANA).
 
 The RC MUST prove possession of any presented key by the `proof` mechanism
 associated with the key in the request.  Proof types
@@ -1927,11 +1927,11 @@ subject
 
 instance_id
 : An identifier this RC instance can use to identify itself when making 
-    future requests. {{response-dynamic-handle}}
+    future requests. {{response-dynamic-handles}}
 
 user_handle
 : An identifier this RC instance can use to identify its current RQ when
-    making future requests. {{response-dynamic-handle}}
+    making future requests. {{response-dynamic-handles}}
 
 error
 : An error code indicating that something has gone wrong. {{response-error}}
@@ -2539,7 +2539,7 @@ A "POST" or "PATCH" request would update client information, including having a
 method for key rotation using nested signatures. A "DELETE" request would
 un-register the client, etc. ]]
 
-## Error Response {#error-response}
+## Error Response {#response-error}
 
 If the AS determines that the request cannot be issued for any
 reason, it responds to the RC with an error message.
@@ -3057,7 +3057,7 @@ issued or claims have already been released. In such cases, the RC makes an HTTP
 request to the continuation URI and includes any fields it needs to modify. Fields
 that aren't included in the request are considered unchanged from the original request.
 
-The RC MAY include the `resources` and `subject` fields as described in {{request-resources}}
+The RC MAY include the `resources` and `subject` fields as described in {{request-resource}}
 and {{request-subject}}. Inclusion of these fields override any values in the initial request,
 which MAY trigger additional requirements and policies by the AS. For example, if the RC is asking for 
 more access, the AS could require additional interaction with the RO to gather additional consent.
@@ -3805,7 +3805,7 @@ fHI6kqm3NCyCCTihe2ck5RmCc5l2KBO/vAHF0ihhFOOOby1v6qbPHQcxAU6rEb907
 
 [[ Editor's note: ]]
 
-## DPoP {#dpop-binding}
+## Demonstration of Proof-of-Possession (DPoP) {#dpop-binding}
 
 This method is indicated by `dpop` in the
 `proof` field. The RC creates a Demonstration of Proof-of-Possession
@@ -3946,7 +3946,7 @@ Y1cK2U3obvUg7w"
 When used to present an access token as in {{use-access-token}},
 the Authorization header MUST be included in the signature.
 
-## OAuth PoP {#oauth-pop-binding}
+## OAuth Proof of Possession (PoP) {#oauth-pop-binding}
 
 This method is indicated by `oauthpop` in
 the `proof` field. The RC creates an HTTP
