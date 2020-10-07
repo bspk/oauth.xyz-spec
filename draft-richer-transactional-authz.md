@@ -1695,7 +1695,32 @@ also allow a client to declare that it expects a callback in response to
 one kind of interaction method but not others, and include multiple combinations
 at once. This could be accomplished by allowing the client to "bundle" interaction
 parameters together, if desirable -- for example, if "interact" were an array, the 
-client would accept any combination represented by one object. ]]
+client would accept any combination represented by one object. This example binds
+the "callback" only to the first "redirect" method, and second (short) "redirect"
+and  "user_code" method do not use a callback.
+
+~~~
+"interact": [
+  {
+    "redirect": true,
+    "callback": {
+       "method": "redirect",
+       "uri": "https://client.example.net/return/123455",
+       "nonce": "LKLTI25DK82FX4T4QFZC"
+    }
+  },
+  {
+    "redirect": 255,
+    "user_code": true
+  }
+]
+~~~
+
+It's not clear what a response to such an array would be. Would the AS
+pick one of these bundles? Would it be allowed to respond to any or all of them? 
+Could an AS use different URIs for each bundle? (This seems likely, at least.)
+
+]]
 
 #### Receive an HTTP Callback Through the Browser {#request-interact-callback-redirect}
 
