@@ -1903,7 +1903,38 @@ possible top-level extensions would look like. ]]
 # Grant Response {#response}
 
 In response to a RC's request, the AS responds with a JSON object
-as the HTTP entity body.
+as the HTTP entity body. Each possible field is detailed in the sections below
+
+
+continue
+: Indicates that the RC can continue the request by making an
+    additional request using these parameters. {{response-continue}}
+
+access_token
+: A single access token that the RC can use to call the RS on
+    behalf of the RO. {{response-token-single}}
+
+multiple_access_token
+: Multiple named access tokens that the RC can use to call the
+    RS on behalf of the RO. {{response-token-multiple}}
+
+interact
+: Indicates that interaction through some set of defined mechanisms
+    needs to take place. {{response-interact}}
+
+subject
+: Claims about the RO as known and declared by the AS. {{response-subject}}
+
+instance_id
+: An identifier this RC instance can use to identify itself when making 
+    future requests. {{response-dynamic-handle}}
+
+user_handle
+: An identifier this RC instance can use to identify its current RQ when
+    making future requests. {{response-dynamic-handle}}
+
+error
+: An error code indicating that something has gone wrong. {{response-error}}
 
 In this example, the AS is returning an [interaction URL](#response-interact-redirect),
 a [callback nonce](#response-interact-callback), and a [continuation handle](#response-continue).
@@ -2506,7 +2537,7 @@ A "POST" or "PATCH" request would update client information, including having a
 method for key rotation using nested signatures. A "DELETE" request would
 un-register the client, etc. ]]
 
-## Error response {#error-response}
+## Error Response {#error-response}
 
 If the AS determines that the request cannot be issued for any
 reason, it responds to the RC with an error message.
