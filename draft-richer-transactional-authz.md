@@ -3069,7 +3069,11 @@ and {{request-subject}}. Inclusion of these fields override any values in the in
 which MAY trigger additional requirements and policies by the AS. For example, if the RC is asking for 
 more access, the AS could require additional interaction with the RO to gather additional consent.
 If the RC is asking for more limited access, the AS could determine that sufficient authorization
-has been granted to the RC and return the more limited access rights immediately.
+has been granted to the RC and return the more limited access rights immediately. 
+[[ Editor's note: We could state something like "resources and subject MUST NOT be the same as in
+the initial or previous request" to enforce that this really is a change, but is there value in
+calling that out here? Somehow we do probably want to tell the AS to not let a client simply
+post the same request here to rotate access tokens now that we've got an explicit function for that, right? ]]
 
 The RC MAY include the `interact` field as described in {{request-interact}}. Inclusion of
 this field indicates that the RC is capable of driving interaction with the RO, and this field
