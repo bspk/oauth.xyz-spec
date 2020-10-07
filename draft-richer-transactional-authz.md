@@ -2209,12 +2209,14 @@ if we require the token to be presented? ]]
 
 If the RC has indicated a [capability to interact with the RO in its request](#request-interact), and the AS has determined that interaction is both
 supported and necessary, the AS responds to the RC with any of the
-following values in the `interact` field of the response. There is no preference order for interaction
-capabilities in the response, and it is up to the RC to determine
-which ones to use.
+following values in the `interact` field of the response. There is 
+no preference order for interaction capabilities in the response, 
+and it is up to the RC to determine which ones to use. All supported
+interaction methods are included in the same `interact` object.
 
 The AS MUST NOT respond with any interaction capability that the
-RC did not indicate in its request.
+RC did not indicate in its request. The AS MUST NOT respond with
+any interaction capability that the AS does not support.
 
 ### Redirection to an arbitrary URL {#response-interact-redirect}
 
