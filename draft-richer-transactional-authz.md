@@ -199,7 +199,7 @@ and format of the access token are opaque to the RC.
 
 Key
 : A cryptographic element binding a request to the
-holder of the key. Access tokens and RC's can be associated with
+holder of the key. Access tokens and RC instances can be associated with
 specific keys.
 
 Subject Information
@@ -2431,6 +2431,13 @@ the RC MUST use an identity protocol to request and receive additional identity
 claims. While {{request-oidc-claims}} specifies one such method, the details
 of an identity protocol and associated schema are outside the scope of this
 specification.
+
+[[ Editor's note: subject identifiers here are naturally scoped to the AS; even though
+using an external identifier like an email address or phone number implies a global
+namespace in use, the association of that identifier to the current user is still
+under the view of the AS. Would it be desirable to have an identifier that's globally
+unique by design? The "iss_sub" type almost gets us there by explicitly calling out
+the issuer URL, but tuples are hard to deal with in practice and so tend to get ignored. ]]
 
 [[ Editor's note: This will need substantial privacy considerations, as this is
 releasing information about the current user that could be tied to other
