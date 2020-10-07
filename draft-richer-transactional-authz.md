@@ -2851,34 +2851,49 @@ hash value.
 
 # Continuing a Grant Request {#continue-request}
 
-If the RC receives a `continue` element in its response 
-{{response-continue}}, the RC can make an HTTP POST call to
-the continuation URI.
+While it is possible for the AS to return a [response](#response) with all the
+RC's requested information (including [access tokens](#response-token) and 
+[direct user information](#response-subject)), it's more common that the AS and
+the RC will need to communicate several times over the lifetime of an access grant.
+This is often part of facilitating [interaction](#user-interaction), but it could
+also be used to allow the AS and RC to continue negotiating the parameters of
+the [original grant request](#request). 
 
-The RC MUST present proof of the same [key identified in the initial request](#request-key) by
-signing the request as described in {{binding-keys}}. This requirement
-is in place whether or not the AS had previously registered the RC's
-key as described in {{request-key-authenticate}}.
+To enable this ongoing negotiation, the AS returns a `continue` element 
+[in the response](#response-continue) that contains information the RC needs to
+continue this process with another request, including a URI to access
+as well as an optional access token to use during the continued requests.
 
-If the AS includes an `access_token` in the continue
-response in {{response-continue}}, the RC MUST include the access token in a manner
-appropriate for the token's binding type, as described in {{use-access-token}}.
+When the RC makes any calls to the continuation URL, the RC MUST present
+proof of the most recent key associated with this ongoing request
+by signing the request as described in {{binding-keys}}. The key in use will
+be either the key from [the initial request](#request-key) or its most recent
+rotation. [[ Editor's note: we need to have a secure way to rotate the key
+used for the continuation here. In most cases this will be a rotation for
+the client instance, since a client without an instance record would likely just
+present a new key for a new request. In that case it could go with the client
+management, above -- but it doesn't necessarily have to be. ]]
+
+For example, here the RC makes a POST request and signs with detached
+JWS:
 
 ~~~
-POST /continue HTTP/1.1
+POST /continue/80UPRY5NM33OMUKMKSKU HTTP/1.1
 Host: server.example.com
-Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
 ~~~
 
-The RC MAY include a request body containing parameters as described here or as
-defined [a registry TBD](#IANA). If the body is included, it MUST be a JSON
-object as described in {{request}}.
+If the AS includes an `access_token` in the `continue`
+response in {{response-continue}}, the RC MUST include the access token the
+request as described in {{use-access-token}}. Note that the access token
+is always bound to the RC's presented key (or its most recent rotation).
+
+For example, here the RC makes a POST request with the interaction reference, 
+includes the access token, and signs with detached JWS:
 
 ~~~
 POST /continue HTTP/1.1
 Host: server.example.com
-Content-type: application/json
 Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
 
@@ -2887,15 +2902,18 @@ Detached-JWS: ejy0...
 }
 ~~~
 
-[[ Editor's note: We probably want to control how we allow sending
-other request parameters, like modifying the resources requested or
-providing more user information. We'll certainly have some kinds of
-specific challenge-response protocols as there's already been interest
-in that kind of thing, and the continuation request is the place where
-that would fit. Ultimately, nearly anything in the "request" object
-could be argued for inclusion here. ]]
+The AS MUST be able to tell from the RC's request which specific ongoing request
+is being accessed. Common methods for doing so include using a unique, unguessable URL
+for each continuation response, associating the request with the provided access
+token, or allowing only a single ongoing grant request for a given RC instance
+at a time. If the AS cannot determine a single active grant request to map the
+continuation request to, the AS MUST return an error.
 
-If a "wait" parameter was included in the continuation response, the
+The ability to continue an already-started request allows the RC to perform several 
+important functions, including presenting additional information from interaction, 
+modifying the initial request, and getting the current state of the request.
+
+If a "wait" parameter was included in the [continuation response](#response-continue), the
 RC MUST NOT call the continuation URI prior to waiting the number of
 seconds indicated. If no "wait" period is indicated, the RC SHOULD
 wait at least 5 seconds [[ Editor's note: what's a reasonable amount of
@@ -2903,36 +2921,28 @@ time so as not to DOS the server?? ]]. If the RC does not respect the
 given wait period, the AS MUST return an error.
 
 The response from the AS is a JSON object and MAY contain any of the
-elements described in {{response}}, with the following
-variations:
+elements described in {{response}}, as described in more detail in the
+sections below.
 
-If the AS determines that the RC can make a further continuation
-request, the AS MUST include a new 
-["continue" response element](#response-continue). The
-returned handle value MUST NOT be the same as that used to make the
-continuation request, and the continuation URI MAY remain the same. If
-the AS does not return a new "continue" response element, the RC
+If the AS determines that the RC can 
+make a further continuation request, the AS MUST include a new 
+["continue" response element](#response-continue). 
+If the continuation was previously bound to an access token, the
+new `continue` response MUST include a bound access token as well, and
+this token SHOULD be a new access token. [[ Editor's note: this used to be a MUST,
+but is it safe to back off that requirement? ]]
+If the AS does not return a new `continue` response element, the RC
 MUST NOT make an additional continuation request. If a RC does so,
 the AS MUST return an error.
 
-If the AS determines that the RC still needs to drive interaction
-with the RQ, the AS MAY return appropriate [responses for any of the interaction mechanisms](#response-interact) 
-the RC [indicated in its initial request](#request-interact). Unique values such as interaction URIs
-and nonces SHOULD be re-generated and not re-used.
+For continuation functions that require the RC to send a message body, the body MUST be
+a JSON object. 
 
+## Continuing After a Finalized Interaction {#continue-after-interaction}
 
-[[ Editor's note: Additional methods could be defined on the continuation
-endpoint for different functions, like DELETE for canceling a grant request.
-The client's continuation request fit POST fine though as it's a non-idempotent
-request (even without a body). 
-
-## Continuing after a Finalized Interaction {#continue-after-interaction}
-
-If the RC has received an interaction reference from a ["callback"](#interaction-callback) message, the
-RC MUST include the "interaction_ref" in its continuation request.
-The RC MUST validate the hash before making the continuation
-request, but note that the RC does not send the hash back to the AS
-in the request.
+When the AS responds to the RC's `callback` parameter as in {{interaction-callback}}, this
+response includes an interaction reference. The RC MUST include that value as the field
+`interact_ref` in a POST request to the continuation URI.
 
 ~~~
 POST /continue/80UPRY5NM33OMUKMKSKU HTTP/1.1
@@ -2945,29 +2955,346 @@ Detached-JWS: ejy0...
 }
 ~~~
 
-## Continuing after Tokens are Issued {#continue-after-tokens}
+If the RC needs to make additional continuation calls after this request, the RC
+MUST NOT include the interaction reference. 
 
-A request MAY be continued even after access tokens have been
-issued, so long as the handle is valid. The AS MAY respond to such a continuation
-request with new access tokens as described in {{response-token}} based on the RC's
-original request. The AS SHOULD revoke existing access tokens.
-If the AS determines that the RC can make a further continuation
-request in the future, the AS MUST include a new 
-["continue" response element](#response-continue). The
-returned handle value MUST NOT be the same as that used to make the
-continuation request, and the continuation URI MAY remain the same. If
-the AS does not return a new "continue" response element, the RC
-MUST NOT make an additional continuation request. If the RC does so,
-the AS MUST return an error.
+The [response](#response) MAY contain any newly-created [access tokens](#response-token) or
+newly-released [subject claims](#response-subject). The response MAY contain
+a new ["continue" response element](#response-continue) as described above. The response
+SHOULD NOT contain [interaction elements](#response-interact).
 
-[[ Editor's note: The ability to continue a grant to get a new access token
-with the same rights has some potential overlap here with the functionality
-that allows the rotation of an individual access token in {{rotate-access-token}}.
-It seems like this would still be needed to modify the entire request,
-but for the common case where you've got a single access token in the
-response, you've got two ways to do almost the same thing, which is
-confusing for client developers. We need to discuss how best to manage
-these patterns in concert with each other. ]]
+For example, if the request is successful in causing the AS to issue access tokens and
+release subject claims, the response could look like this:
+
+~~~
+{
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "key": false,
+        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L"
+    },
+    "subject": {
+        "sub_ids": [ {
+           "subject_type": "email",
+           "email": "user@example.com",
+        } ]
+    }
+}
+~~~
+
+With this example, the RC can not make an additional continuation request because
+a `continue` field is not included.
+
+[[ Editor's note: other interaction methods, such as a challenge-response cryptographic
+protocol, would use a similar construct as here. ]]
+
+## Continuing During Pending Interaction {#continue-poll}
+
+When the RC does not include a `callback` parameter, the RC will often need to
+poll the AS until the RO has authorized the request. To do so, the RC makes a POST
+request to the continuation URI as in {{continue-after-interaction}}, but does not
+include a message body.
+
+~~~
+POST /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+~~~
+
+The [response](#response) MAY contain any newly-created [access tokens](#response-token) or
+newly-released [subject claims](#response-subject). The response MAY contain
+a new ["continue" response element](#response-continue) as described above. If a `continue`
+element is included, it SHOULD include a `wait` field to facilitate a reasonable polling rate by
+the RC. The response SHOULD NOT contain [interaction elements](#response-interact).
+
+For example, if the request has not yet been authorized by the RO, the AS could respond
+by telling the RC to make another continuation request in the future. In this example,
+a new, unique access token has been issued for the call, which the RC will use in its
+next continuation request. 
+
+~~~
+{
+    "continue": {
+        "access_token": {
+            "value": "33OMUKMKSKU80UPRY5NM",
+            "key": true
+        },
+        "uri": "https://server.example.com/continue",
+        "wait": 30
+    }
+}
+~~~
+
+[[ Editor's note: Do we want to be more precise about what's expected inside the "continue" 
+object? I think that at least the URI is required, access token required IF used, etc. This is
+even if they haven't changed since last time, and the client will use whatever value comes back. ]]
+
+If the request is successful in causing the AS to issue access tokens and
+release subject claims, the response could look like this example:
+
+~~~
+{
+    "access_token": {
+        "value": "OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0",
+        "key": false,
+        "manage": "https://server.example.com/token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L"
+    },
+    "subject": {
+        "sub_ids": [ {
+           "subject_type": "email",
+           "email": "user@example.com",
+        } ]
+    }
+}
+~~~
+
+## Modifying an Existing Request {#continue-modify}
+
+The RC might need to modify an ongoing request, whether or not tokens have already been
+issued or claims have already been released. In such cases, the RC makes an HTTP PATCH
+request to the continuation URI and includes any fields it needs to modify. Fields
+that aren't included in the request are considered unchanged from the original request.
+
+The RC MAY include the `resources` and `subject` fields as described in {{request-resources}}
+and {{request-subject}}. Inclusion of these fields override any values in the initial request,
+which MAY trigger additional requirements and policies by the AS. For example, if the RC is asking for 
+more access, the AS could require additional interaction with the RO to gather additional consent.
+If the RC is asking for more limited access, the AS could determine that sufficient authorization
+has been granted to the RC and return the more limited access rights immediately.
+
+The RC MAY include the `interact` field as described in {{request-interact}}. Inclusion of
+this field indicates that the RC is capable of driving interaction with the RO, and this field
+replaces any values from a previous request. The AS MAY respond to any of the interaction 
+elements as described in {{response-interact}}, just like it would to a new request.
+
+The RC MAY include the `user` field as described in {{request-user}} to present new assertions
+or information about the RQ.
+
+The RC MUST NOT include the `client` section of the request. [[ Editor's note: We do not want
+the client to be able to get swapped out from underneath the user, especially post-consent. 
+However, including this field in a PATCH update request might be the place to 
+define key rotation for the grant request itself, but we'd need to be very careful of how that works.
+And it feels like it might have consequences outside of the request, such as rotating the
+key for all ongoing grants for a given client instance, which isn't really desirable here. 
+We need a lot more discussion and engineering on this before including it. ]]
+
+The RC MAY include interaction response elements such as described in {{continue-after-interaction}}.
+[[ Editor's note: it seems a little odd to include this but I can't see a reason to
+not allow it. ]]
+
+Modification requests MUST NOT alter previously-issued access tokens. Instead, any access
+tokens issued from a continuation are considered new, separate access tokens. The AS 
+MAY revoke existing access tokens after a modification has occurred. [[ Editor's note: 
+this might be subject to the "multi_token" flag, but since we're creating a NEW access
+token and not rotating an existing one, this seems to be a different use case. ]]
+
+Modification requests MAY result in previously-issued access tokens being revoked. [[ Editor's
+note: there is a solid argument to be made for always revoking old access tokens here, but
+we need more discussion on the boundaries for such a requirement. If they stick around, it
+does make a "read" request weird because now we've got multiple access tokens sticking around
+associated with a grant request and no good place to put them. ]]
+
+If the modified request can be granted immediately by the AS, 
+the response MAY contain any newly-created [access tokens](#response-token) or
+newly-released [subject claims](#response-subject). The response MAY contain
+a new ["continue" response element](#response-continue) as described above. If interaction
+can occur, the response SHOULD contain [interaction elements](#response-interact) as well.
+
+For example, an RC initially requests a set of resources using references:
+
+~~~
+POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        "read", "write"
+    ],
+    "interact": {
+        "redirect": true,
+        "callback": {
+            "method": "redirect",
+            "uri": "https://client.example.net/return/123455",
+            "nonce": "LKLTI25DK82FX4T4QFZC"
+        }
+    },
+    "client": "987YHGRT56789IOLK"
+}
+~~~
+
+Access is granted by the RO, and a token is issued by the AS. 
+In its final response, the AS includes a continuation element:
+
+~~~
+{
+    "continue": {
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "key": true
+        },
+        "uri": "https://server.example.com/continue",
+        "wait": 30
+    },
+    "access_token": ...
+}
+~~~
+
+This allows the RC to make an eventual continuation call. The RC realizes that it no longer needs
+"write" access and therefore modifies its ongoing request, here asking for just "read" access
+instead of both "read" and "write" as before.
+
+~~~
+PATCH /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        "read"
+    ]
+    ...
+}
+~~~
+
+The AS replaces the previous `resources` element from the first request, allowing the AS to
+determine if any previously-granted consent already applies. In this case, the AS would
+likely determine that reducing the breadth of the requested access means that new access
+tokens can be issued to the RC. The AS would likely revoke previously-issued access tokens
+that had the greater access rights associated with them.
+
+~~~
+{
+    "continue": {
+        "access_token": {
+            "value": "M33OMUK80UPRY5NMKSKU",
+            "key": true
+        },
+        "uri": "https://server.example.com/continue",
+        "wait": 30
+    },
+    "access_token": ...
+}
+~~~
+
+For another example, the RC initially requests read-only access but later 
+needs to step up its access. The initial request could look like this example. 
+
+~~~
+POST /tx HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        "read"
+    ],
+    "interact": {
+        "redirect": true,
+        "callback": {
+            "method": "redirect",
+            "uri": "https://client.example.net/return/123455",
+            "nonce": "LKLTI25DK82FX4T4QFZC"
+        }
+    },
+    "client": "987YHGRT56789IOLK"
+}
+~~~
+
+Access is granted by the RO, and a token is issued by the AS. 
+In its final response, the AS includes a continuation element:
+
+~~~
+{
+    "continue": {
+        "access_token": {
+            "value": "80UPRY5NM33OMUKMKSKU",
+            "key": true
+        },
+        "uri": "https://server.example.com/continue",
+        "wait": 30
+    },
+    "access_token": ...
+}
+~~~
+
+This allows the RC to make an eventual continuation call. The RC later realizes that it now
+needs "write" access in addition to the "read" access. Since this is an expansion of what
+it asked for previously, the RC also includes a new interaction section in case the AS needs
+to interact with the RO again to gather additional authorization. Note that the RC's
+nonce and callback are different from the initial request. Since the original callback was
+already used in the initial exchange, and the callback is intended for one-time-use, a new one
+needs to be included in order to use the callback again.
+
+[[ Editor's note: the net result of this is that interaction elements are really only meant
+to be responded to exactly once by the AS. This isn't spelled out explicitly, but could
+be included in {{request-interact}} and/or {{response-interact}}. ]]
+
+~~~
+PATCH /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+
+{
+    "resources": [
+        "read", "write"
+    ],
+    "interact": {
+        "redirect": true,
+        "callback": {
+            "method": "redirect",
+            "uri": "https://client.example.net/return/654321",
+            "nonce": "K82FX4T4LKLTI25DQFZC"
+        }
+    }
+}
+~~~
+
+From here, the AS can determine that the RC is asking for more than it was previously granted,
+but since the RC has also provided a mechanism to interact with the RO, the AS can use that
+to gather the additional consent. The protocol continues as it would with a new request.
+Since the old access tokens are good for a subset of the rights requested here, the 
+AS might decide to not revoke them. However, any access tokens granted after this update
+process are new access tokens and do not modify the rights of existing access tokens.
+
+## Getting the Current State of a Grant Request {#continue-state}
+
+If the RC needs to get the current state of an ongoing grant request, it makes an
+HTTP GET request to the continuation URI. This request MUST NOT alter the grant
+request in any fashion, including causing the issuance of new access tokens or
+modification of interaction parameters. 
+
+The AS MAY include existing access tokens and previously-released subject claims in
+the response. The AS MUST NOT issue a new access token or release a new subject 
+claim in response to this request. 
+
+~~~
+GET /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+~~~
+
+The response MAY include any fields described {{response}} that are applicable to this
+ongoing request, including the most recently issued access tokens, any released subject
+claims, and any currently active interaction elements. The response MAY contain a 
+new ["continue" response element](#response-continue) as described above.
+
+[[ Editor's note: I'm a little dubious about the need for this particular function in
+reality, but including it for completeness sake. There are a lot of questions we need
+to answer, such as whether it's safe to include access tokens and claims in the response
+of this kind of "read" at all, and whether it makes sense to include items like interaction
+nonces in the response. This discussion should be driven by the use cases calling for
+this "read" functionality. ]]
 
 # Token Management {#token-management}
 
@@ -2996,12 +3323,14 @@ by the client posting new information from a "request"? It seems this might
 make things weird since an access token is generally considered
 an unchanging thing, and the client could always request a new
 access token if they're allowed to continue the grant request post-issuance
-as in {{continue-after-tokens}}. There's also a possibility of
-being able to "read" a token's state, much like token introspection
+as in {{continue-modify}}. There's also a possibility of
+being able to "read" a token's state with a GET, much like token introspection
 but using the token's/client's key instead of the RS key. But
 would a client need to "read" a token state after issuance? Is there
 a security risk to offering that functionality? Introspection is
-nearly always relegated to RS calls. ]]
+nearly always relegated to RS calls in practice since the client
+is focused on using the token at the RS. The client can always read
+the state of the grant itself, separately. ]]
 
 ## Rotating the Access Token {#rotate-access-token}
 
@@ -3015,6 +3344,12 @@ Host: server.example.com
 Authorization: GNAP OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0
 Detached-JWS: eyj0....
 ~~~
+
+[[ Editor's note: This could alternatively be an HTTP PUT verb, 
+since we are telling the AS that we want to replace the token. However,
+we are not providing the information we want to replace the token with,
+and in fact that's up to the AS entirely, not the client. For that reason,
+I think a POST still makes the most sense. ]]
 
 The AS validates that the token presented is associated with the management
 URL, that the AS issued the token to the given RC, and that
@@ -3035,6 +3370,11 @@ access token MUST NOT be the same as the current value of the access
 token used to access the management API. The response MAY include an
 updated access token management URL as well, and if so, the RC
 MUST use this new URL to manage the new access token.
+
+[[ Editor's note: the net result is that the client's always going
+to use the management URL that comes back. But should we let the server
+omit it from the response if it doesn't change? That seems like an
+odd optimization that doesn't help the client. ]]
 
 ~~~
 {
@@ -3081,7 +3421,8 @@ the RC can use the token management URI to indicate to the AS that
 the AS should invalidate the access token for all purposes.
 
 The RC makes an HTTP DELETE request to the token management
-URI, signing the request with its key. 
+URI, presenting the access token and signing the request with
+the appropriate key.
 
 ~~~
 DELETE /token/PRY5NM33OM4TB8N6BW7OZB8CDFONP219RP1L HTTP/1.1
@@ -3090,20 +3431,21 @@ Authorization: GNAP OS9M2PMHKUR64TB8N6BW7OZB8CDFONP219RP1LT0
 Detached-JWS: eyj0....
 ~~~
 
-If the token was issued to the RC identified by the key, the AS
-MUST invalidate the access token, if
+If the key presented is associated with the token (or the RC, in
+the case of a bearer token), the AS MUST invalidate the access token, if
 possible, and return an HTTP 204 response code.
 
 ~~~
 204 No Content
 ~~~
 
-If the access token has expired, the AS SHOULD honor the revocation request to 
+Though the AS MAY revoke an access token at any time for
+any reason, the token management function is specifically for the RC's use.
+If the access token has already expired or has been revoked through other
+means, the AS SHOULD honor the revocation request to 
 the token management URL as valid, since the end result is still the token
 not being usable.
 
-Though the AS MAY revoke an access token at any time for
-any reason, the token management function is specifically for the RC's use.
 
 # Using Access Tokens {#use-access-token}
 
@@ -4082,6 +4424,10 @@ sure that it has the permission to do so.
 
 - -13
     - Clarified that "subject" request and response aren't for identity claims, just identifiers.
+    - Reworked continuation definition in terms of endpoint actions.
+    - Defined concrete methods for updating an ongoing grant request using PATCH.
+    - Defined method for reading current status of grant request using GET.
+    - Expanded editorial comments and strawman examples for alternatives.
 
 - -12 
     - Collapsed "key" and "display" fields into "client" field.
