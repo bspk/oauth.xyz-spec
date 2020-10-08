@@ -757,14 +757,14 @@ unless otherwise specified by the signature mechanism.
 
 If the RC is requesting one or more access tokens for the
 purpose of accessing an API, the RC MUST include a `resources`
-element. This element MUST be an array (for a [single access token](#request-resource-single)) or
+field. This field MUST be an array (for a [single access token](#request-resource-single)) or
 an object (for [multiple access tokens](#request-resource-multiple)), as described in the following
 sections.
 
 ### Requesting a Single Access Token {#request-resource-single}
 
 When requesting an access token, the RC MUST send a
-`resources` element containing a JSON array. The elements of the JSON
+`resources` field containing a JSON array. The elements of the JSON
 array represent rights of access that the RC is requesting in
 the access token. The requested access is the sum of all elements
 within the array. 
@@ -776,8 +776,8 @@ property that determines the type of API that the RC is calling.
 
 type
 : The type of resource request as a string. This field MAY
-      define which other elements are allowed in the request. 
-      This element is REQUIRED.
+      define which other fields are allowed in the request object. 
+      This field is REQUIRED.
 
 The value of this field is under the control of the AS. 
 This field MUST be compared using an exact byte match of the string
@@ -817,7 +817,7 @@ identifier
     a bank account number for a financial API.
 
 The following non-normative example shows the use of both common
-and API-specific elements as part of two different access `type` 
+and API-specific fields as part of two different access `type` 
 values. 
 
 ~~~
@@ -931,8 +931,8 @@ they're the ones picking from the API's description. ]]
 
 ### Requesting Multiple Access Tokens {#request-resource-multiple}
 
-When requesting multiple access tokens, the resources element is
-a JSON object. The names of the JSON object elements are token
+When requesting multiple access tokens, the resources field is
+a JSON object. The names of the JSON object fields are token
 identifiers chosen by the RC, and MAY be any valid string. The
 values of the JSON object are JSON arrays representing a single
 access token request, as specified in 
@@ -1094,7 +1094,7 @@ this kind of thing, like OIDC did with "offline_access". ]]
 ## Requesting User Information {#request-subject}
 
 If the RC is requesting information about the RO from
-the AS, it sends a `subject` element as a JSON object. This object MAY
+the AS, it sends a `subject` field as a JSON object. This object MAY
 contain the following fields (or additional fields defined in 
 [a registry TBD](#IANA)).
 
@@ -1123,18 +1123,21 @@ this is determined positively, the AS MAY [return the RO's information in its re
 as requested. 
 
 Subject identifiers requested by the RC serve only to identify 
-the RO in the context of the AS and MUST NOT be used as communication
+the RO in the context of the AS and can't be used as communication
 channels by the RC, as discussed in {{response-subject}}. One method of 
 requesting communication channels and other identity claims are discussed
-in {{request-oidc-claims}}, but the details are outside the scope of
-this specification. 
+in {{request-oidc-claims}}.  
 
 The AS SHOULD NOT re-use subject identifiers for multiple different ROs.
 
 [[ Editor's Note: What we're really saying here is that "even if the AS
 gives you an email address to identify the user, that isn't a claim that this
 is a valid email address for that current user, so don't try to email them."
-In order to get a workable email address, or anything that]]
+In order to get a workable email address, or anything that you can use to
+contact them, you'd need a full identity protocol and not just this.
+Also, subject identifiers are asserted by the AS and therefore naturally
+scoped to the AS. Would changing the name to "as_sub_ids" or "local_sub_ids" help 
+convey that point? ]]
 
 Note: the "sub_ids" and "assertions" request fields are independent of
 each other, and a returned assertion MAY omit a requested subject
@@ -2419,25 +2422,28 @@ the RO and the RQ are the same party. This can be accomplished through some form
 [interaction with the RO](#user-interaction).
 
 Subject identifiers returned by the AS SHOULD uniquely identify the RO at the
-AS. Some forms of subject identifier are opaque to the RC (such as the issuer and
-subject pair), while others forms (such as email address and phone number) are
-intended to allow the RC to correlate the identifier with other information
-at the RC. The RC MUST NOT use any returned subject identifiers for communication
-purposes. That is, a subject identifier returned in the format of an email address or 
+AS. Some forms of subject identifier are opaque to the RC (such as the subject of an 
+issuer and subject pair), while others forms (such as email address and phone number) are
+intended to allow the RC to correlate the identifier with other account information
+at the RC. The RC MUST NOT request or use any returned subject identifiers for communication
+purposes (see {{request-subject}}). That is, a subject identifier returned in the format of an email address or 
 a phone number only identifies the RO to the AS and does not indicate that the
 AS has validated that the represented email address or phone number in the identifier
 is suitable for communication with the current user. To get such information,
 the RC MUST use an identity protocol to request and receive additional identity
-claims. While {{request-oidc-claims}} specifies one such method, the details
-of an identity protocol and associated schema are outside the scope of this
-specification.
+claims. While {{request-oidc-claims}} specifies one such method, 
+other identity protocols could also be used on top of GNAP to convey
+this information and the details of an identity protocol and associated schema 
+are outside the scope of this specification.
 
 [[ Editor's note: subject identifiers here are naturally scoped to the AS; even though
 using an external identifier like an email address or phone number implies a global
 namespace in use, the association of that identifier to the current user is still
-under the view of the AS. Would it be desirable to have an identifier that's globally
+under the view of the AS. Would changing the name to "as_sub_ids" or "local_sub_ids" help 
+convey that point? Would it also be desirable to have an identifier that's globally
 unique by design? The "iss_sub" type almost gets us there by explicitly calling out
-the issuer URL, but tuples are hard to deal with in practice and so tend to get ignored. ]]
+the issuer URL, but tuples are hard to deal with in practice and so tend to get ignored
+in practice in the OIDC space. ]]
 
 [[ Editor's note: This will need substantial privacy considerations, as this is
 releasing information about the current user that could be tied to other
@@ -2472,7 +2478,7 @@ and MUST NOT contain any sensitive information. Handle values are
 opaque to the RC. 
 
 [[ Editor's note: these constructs used to be objects to
-allow for expansion to future elements, like a management URI or
+allow for expansion to future fields, like a management URI or
 different presentation types or expiration, but those weren't used in
 practice. Is that desirable anymore or is collapsing them like this
 the right direction? ]]
@@ -2524,7 +2530,7 @@ use cases that OAuth forces us in to. ]]
 
 [[ Editor's note: The client-bound "instance_id" could serve as the hook
 we would need for RFC7592 style dynamic client management, including additional
-elements like key rotation. If the AS returns an object instead of a string
+components like key rotation. If the AS returns an object instead of a string
 here, that could include everything that the client would need in order to
 make REST-style management calls, similar to token management. 
 
@@ -2704,7 +2710,8 @@ validate the return call from the AS.
 The AS MUST create an interaction reference and associate that
 reference with the current interaction and the underlying pending
 request. This value MUST be sufficiently random so as not to be
-guessable by an attacker.
+guessable by an attacker. The interaction reference MUST be
+one-time-use.
 
 The AS then MUST send the hash and interaction reference based on
 the interaction finalization capability as described in the following
@@ -2759,7 +2766,7 @@ complete and the request can be continued by sending an HTTP POST
 request to the RC's callback URL sent in [the callback request](#request-interact-callback-push).
 
 The entity message body is a JSON object consisting of the
-following two elements:
+following two fields:
 
 
 hash
@@ -2866,7 +2873,7 @@ This is often part of facilitating [interaction](#user-interaction), but it coul
 also be used to allow the AS and RC to continue negotiating the parameters of
 the [original grant request](#request). 
 
-To enable this ongoing negotiation, the AS returns a `continue` element 
+To enable this ongoing negotiation, the AS returns a `continue` field 
 [in the response](#response-continue) that contains information the RC needs to
 continue this process with another request, including a URI to access
 as well as an optional access token to use during the continued requests.
@@ -2928,24 +2935,24 @@ time so as not to DOS the server?? ]]. If the RC does not respect the
 given wait period, the AS MUST return an error.
 
 The response from the AS is a JSON object and MAY contain any of the
-elements described in {{response}}, as described in more detail in the
+fields described in {{response}}, as described in more detail in the
 sections below.
 
 If the AS determines that the RC can 
 make a further continuation request, the AS MUST include a new 
-["continue" response element](#response-continue). 
+["continue" response](#response-continue). 
 If the continuation was previously bound to an access token, the
 new `continue` response MUST include a bound access token as well, and
 this token SHOULD be a new access token. [[ Editor's note: this used to be a MUST,
 but is it safe to back off that requirement? ]]
-If the AS does not return a new `continue` response element, the RC
+If the AS does not return a new `continue` response, the RC
 MUST NOT make an additional continuation request. If a RC does so,
 the AS MUST return an error.
 
 For continuation functions that require the RC to send a message body, the body MUST be
 a JSON object. 
 
-## Continuing After a Finalized Interaction {#continue-after-interaction}
+## Continuing After a Completed Interaction {#continue-after-interaction}
 
 When the AS responds to the RC's `callback` parameter as in {{interaction-callback}}, this
 response includes an interaction reference. The RC MUST include that value as the field
@@ -2962,13 +2969,18 @@ Detached-JWS: ejy0...
 }
 ~~~
 
-If the RC needs to make additional continuation calls after this request, the RC
-MUST NOT include the interaction reference. 
+Since the interaction reference is a one-time-use value as described in {{interaction-callback}}, 
+if the RC needs to make additional continuation calls after this request, the RC
+MUST NOT include the interaction reference. If the AS detects an RC submitting the same 
+interaction reference multiple times, the AS MUST return an error and SHOULD invalidate
+the ongoing request.
 
 The [response](#response) MAY contain any newly-created [access tokens](#response-token) or
 newly-released [subject claims](#response-subject). The response MAY contain
-a new ["continue" response element](#response-continue) as described above. The response
-SHOULD NOT contain [interaction elements](#response-interact).
+a new ["continue" response](#response-continue) as described above. The response
+SHOULD NOT contain any [interaction responses](#response-interact). [[ Editor's note: This last
+one might be overly restrictive, since some kinds of interaction could require multiple
+round trips. We need more examples and experience beyond redirect-based interaction here. ]]
 
 For example, if the request is successful in causing the AS to issue access tokens and
 release subject claims, the response could look like this:
@@ -2993,7 +3005,8 @@ With this example, the RC can not make an additional continuation request becaus
 a `continue` field is not included.
 
 [[ Editor's note: other interaction methods, such as a challenge-response cryptographic
-protocol, would use a similar construct as here. ]]
+protocol, would use a similar construct as here, but have different rules. Would it be reasonable
+to allow them to be combined? Could this be combined further with the "update" method in {{continue-modify}}? ]]
 
 ## Continuing During Pending Interaction {#continue-poll}
 
@@ -3012,9 +3025,9 @@ Detached-JWS: ejy0...
 
 The [response](#response) MAY contain any newly-created [access tokens](#response-token) or
 newly-released [subject claims](#response-subject). The response MAY contain
-a new ["continue" response element](#response-continue) as described above. If a `continue`
-element is included, it SHOULD include a `wait` field to facilitate a reasonable polling rate by
-the RC. The response SHOULD NOT contain [interaction elements](#response-interact).
+a new ["continue" response](#response-continue) as described above. If a `continue`
+field is included, it SHOULD include a `wait` field to facilitate a reasonable polling rate by
+the RC. The response SHOULD NOT contain [interaction responses](#response-interact).
 
 For example, if the request has not yet been authorized by the RO, the AS could respond
 by telling the RC to make another continuation request in the future. In this example,
@@ -3078,7 +3091,7 @@ post the same request here to rotate access tokens now that we've got an explici
 The RC MAY include the `interact` field as described in {{request-interact}}. Inclusion of
 this field indicates that the RC is capable of driving interaction with the RO, and this field
 replaces any values from a previous request. The AS MAY respond to any of the interaction 
-elements as described in {{response-interact}}, just like it would to a new request.
+responses as described in {{response-interact}}, just like it would to a new request.
 
 The RC MAY include the `user` field as described in {{request-user}} to present new assertions
 or information about the RQ.
@@ -3091,7 +3104,7 @@ And it feels like it might have consequences outside of the request, such as rot
 key for all ongoing grants for a given client instance, which isn't really desirable here. 
 We need a lot more discussion and engineering on this before including it. ]]
 
-The RC MAY include interaction response elements such as described in {{continue-after-interaction}}.
+The RC MAY include interaction responses such as described in {{continue-after-interaction}}.
 [[ Editor's note: it seems a little odd to include this but I can't see a reason to
 not allow it. ]]
 
@@ -3108,10 +3121,10 @@ does make a "read" request weird because now we've got multiple access tokens st
 associated with a grant request and no good place to put them. ]]
 
 If the modified request can be granted immediately by the AS, 
-the response MAY contain any newly-created [access tokens](#response-token) or
+the [response](#response) MAY contain any newly-created [access tokens](#response-token) or
 newly-released [subject claims](#response-subject). The response MAY contain
-a new ["continue" response element](#response-continue) as described above. If interaction
-can occur, the response SHOULD contain [interaction elements](#response-interact) as well.
+a new ["continue" response](#response-continue) as described above. If interaction
+can occur, the response SHOULD contain [interaction responses](#response-interact) as well.
 
 For example, an RC initially requests a set of resources using references:
 
@@ -3138,7 +3151,7 @@ Detached-JWS: ejy0...
 ~~~
 
 Access is granted by the RO, and a token is issued by the AS. 
-In its final response, the AS includes a continuation element:
+In its final response, the AS includes a `continue` field:
 
 ~~~
 {
@@ -3173,7 +3186,7 @@ Detached-JWS: ejy0...
 }
 ~~~
 
-The AS replaces the previous `resources` element from the first request, allowing the AS to
+The AS replaces the previous `resources` from the first request, allowing the AS to
 determine if any previously-granted consent already applies. In this case, the AS would
 likely determine that reducing the breadth of the requested access means that new access
 tokens can be issued to the RC. The AS would likely revoke previously-issued access tokens
@@ -3219,7 +3232,7 @@ Detached-JWS: ejy0...
 ~~~
 
 Access is granted by the RO, and a token is issued by the AS. 
-In its final response, the AS includes a continuation element:
+In its final response, the AS includes a `continue` field:
 
 ~~~
 {
@@ -3243,7 +3256,7 @@ nonce and callback are different from the initial request. Since the original ca
 already used in the initial exchange, and the callback is intended for one-time-use, a new one
 needs to be included in order to use the callback again.
 
-[[ Editor's note: the net result of this is that interaction elements are really only meant
+[[ Editor's note: the net result of this is that interaction requests are really only meant
 to be responded to exactly once by the AS. This isn't spelled out explicitly, but could
 be included in {{request-interact}} and/or {{response-interact}}. ]]
 
@@ -3297,8 +3310,8 @@ Detached-JWS: ejy0...
 
 The response MAY include any fields described {{response}} that are applicable to this
 ongoing request, including the most recently issued access tokens, any released subject
-claims, and any currently active interaction elements. The response MAY contain a 
-new ["continue" response element](#response-continue) as described above.
+claims, and any currently active interaction capabilities. The response MAY contain a 
+new ["continue" response](#response-continue) as described above.
 
 [[ Editor's note: I'm a little dubious about the need for this particular function in
 reality, but including it for completeness sake. There are a lot of questions we need
@@ -5162,10 +5175,10 @@ From here, the protocol continues as above.
 # JSON Structures and Polymorphism {#polymorphism}
 
 The GNAP protocol makes use of polymorphism within the [JSON](#RFC8259) structures used for
-the protocol. Each element of this protocol is defined in terms of the JSON data type
+the protocol. Each portion of this protocol is defined in terms of the JSON data type
 that its values can take, whether it's a string, object, array, boolean, or number. For some
-elements, different data types offer different descriptive capabilities and are used in different
-situations for the same element. Each data type provides a different syntax to express
+fields, different data types offer different descriptive capabilities and are used in different
+situations for the same field. Each data type provides a different syntax to express
 the same underlying semantic protocol element, which allows for optimization and 
 simplification in many common cases. 
 
