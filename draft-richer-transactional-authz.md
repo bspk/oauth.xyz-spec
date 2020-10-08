@@ -2908,6 +2908,7 @@ includes the access token, and signs with detached JWS:
 ~~~
 POST /continue HTTP/1.1
 Host: server.example.com
+Content-type: application/json
 Authorization: GNAP 80UPRY5NM33OMUKMKSKU
 Detached-JWS: ejy0...
 
