@@ -69,17 +69,15 @@ normative:
 This document defines a mechanism for delegating authorization to a
 piece of software, and conveying that delegation to the software. This
 delegation can include access to a set of APIs as well as information
-passed directly to the software. 
+passed directly to the software.
 
 This document has been prepared by the GNAP working group design team of
 Kathleen Moriarty, Fabien Imbault, Dick Hardt, Mike Jones, and Justin Richer. This document
-is input into the GNAP working group and includes many notes on areas of discussion
-and decision that need to be made by the GNAP working group. Many of the 
-features in this proposed protocol can be accomplished in a number of alternative
-ways, and where possible, the editor has included notes and discussion
-from the design team regarding the options as understood. The design team
-believes that this document represents a reasonable starting point for the
-working group and submits all content to the working group for consensus building.
+is intended as a starting point for the working group and includes decision points for discussion
+and agreement. Many of the
+features in this proposed protocol can be accomplished in a number of
+ways. Where possible, the editor has included notes and discussion
+from the design team regarding the options as understood.
 
 {::boilerplate bcp14}
 
@@ -96,7 +94,7 @@ authorize the request.
 
 The process by which the delegation happens is known as a grant, and
 the GNAP protocol allows for the negotiation of the grant process
-over time by multiple parties. 
+over time by multiple parties acting in distinct roles. 
 
 This protocol solves many of the same use cases as OAuth 2.0 {{RFC6749}},
 OpenID Connect {{OIDC}}, and the family of protocols that have grown up
@@ -495,9 +493,9 @@ the AS.
     with the AS through a secondary device, the RC does not provide a mechanism to
     launch the RO's browser at this URL.
     
-5. The user authenticates at the AS, taking on the role of the RO.
+5. The RQ authenticates at the AS, taking on the role of the RO.
 
-6.  The user enters the code communicated in (3) to the AS. The AS validates this code
+6.  The RO enters the code communicated in (3) to the AS. The AS validates this code
     against a current request in process.
 
 7. As the RO, the user authorizes the pending request from the RC. 
@@ -559,7 +557,7 @@ The RC polls the AS while it is waiting for the RO to authorize the request.
 ~~~
 
 1. The RC [requests access to the resource](#request). The RC does not
-    send any interactions capabilities to the server, indicating that
+    send any interactions modes to the server, indicating that
     it does not expect to interact with the RO. The RC can also signal
     which RO it requires authorization from, if known, by using the
     [user request section](#request-user). 
@@ -621,7 +619,7 @@ Since there is no explicit RO, the RC does not interact with an RO.
 ~~~
 
 1. The RC [requests access to the resource](#request). The RC does not
-    send any interactions capabilities to the server.
+    send any interactions modes to the server.
 
 2. The AS determines that the request is been authorized, 
     the AS grants access to the information
@@ -706,8 +704,8 @@ user
     by interacting with the RQ to determine their status as the RO. {{request-user}}
 
 interact
-: Describes the capabilities that the RC has for allowing the RO to interact with the
-    AS. {{request-interact}}
+: Describes the modes that the RC has for allowing the RO to interact with the
+    AS and modes for the RC to receive updates when interaction is complete. {{request-interact}}
 
 capabilities
 : Identifies named extension capabilities that the RC can use, signaling to the AS
@@ -959,7 +957,7 @@ and we have many years of experience showing us that the simplicity of giving a 
 a set of strings to send is a simple and powerful pattern. We could always require objects
 and just use the "type" field as a scope value, but that's a lot of complexity to pay for
 the simple case. Client developers will always know which kind they need to send, because
-they're the ones picking from the API's description. ]]
+they're picking from the API's documentation. ]]
 
 ### Requesting Multiple Access Tokens {#request-resource-multiple}
 
@@ -1486,7 +1484,7 @@ are pretty different here. ]]
 
 If the AS trusts the RC to present verifiable assertions, the AS MAY
 decide, based on its policy, to skip interaction with the RO, even
-if the RC provides one or more interaction capabilities in its request.
+if the RC provides one or more interaction modes in its request.
 
 
 ### Identifying the User by Reference {#request-user-reference}
@@ -1519,18 +1517,25 @@ return an error.
 
 ## Interacting with the User {#request-interact}
 
-If the RC is capable of driving interaction with the RQ, and the 
-client presumes the RQ can act as the RO, the
-RC SHOULD declare the means that it can interact using the
-"interact" field. This field is a JSON object with keys that declare
-different interaction capabilities. A RC MUST NOT declare an
-interaction capability it does not support.
+Many times, the AS will require interaction with the RO in order to
+approve a requested delegation to the RC for both resources and direct
+claim information. Many times the RQ using the RC is the same person as
+the RO, and the RC can directly drive interaction with the AS by redirecting
+the RQ on the same device, or by launching an application. Other times, the 
+RC can provide information to start the RO's interaction on a secondary
+device, or the RC will wait for the RO to approve the request asynchronously.
+The RC could also be signaled that interaction has completed by the AS making
+callbacks. To facilitate all of these modes, the RC declares the means that it 
+can interact using the `interact` field. 
 
-The RC MAY send multiple capabilities in the same request.
+The `interact` field is a JSON object with keys that declare
+different interaction modes. A RC MUST NOT declare an
+interaction mode it does not support.
+The RC MAY send multiple modes in the same request.
 There is no preference order specified in this request. An AS MAY
-[respond to any, all, or none of the presented interaction capabilities](#response-interact) in a request, depending on
+[respond to any, all, or none of the presented interaction modes](#response-interact) in a request, depending on
 its capabilities and what is allowed to fulfill the request. This specification
-defines the following interaction capabilities:
+defines the following interaction modes:
 
 redirect
 : Indicates that the RC can direct the RQ to an arbitrary URL
@@ -1554,10 +1559,10 @@ ui_locales
     authenticated. {{request-interact-locale}}
 
 The following sections detail requests for interaction
-capabilities. Additional interaction capabilities are defined in 
+modes. Additional interaction modes are defined in 
 [a registry TBD](#IANA).
 
-[[ Editor's note: there need to be [more examples](#examples) that knit together the interaction capabilities into
+[[ Editor's note: there need to be [more examples](#examples) that knit together the interaction modes into
 common flows, like an authz-code equivalent. But it's important for
 the protocol design that these are separate pieces to allow such
 knitting to take place. ]]
@@ -1616,7 +1621,7 @@ console.
 }
 ~~~
 
-If this interaction capability is supported for this RC and
+If this interaction mode is supported for this RC and
 request, the AS returns a redirect interaction response {{response-interact-redirect}}.
 
 #### Redirect to an Arbitrary Shortened URL {#request-interact-short}
@@ -1636,7 +1641,7 @@ of the interaction request? ]]
 }
 ~~~
 
-If this interaction capability is supported for this RC and
+If this interaction mode is supported for this RC and
 request, the AS returns a redirect interaction response with short
 URL {{response-interact-redirect}}.
 
@@ -1656,7 +1661,7 @@ this specification.
 
 
 
-If this interaction capability is supported for this RC and
+If this interaction mode is supported for this RC and
 request, the AS returns an app interaction response with an app URL
 payload {{response-interact-app}}.
 
@@ -1687,7 +1692,11 @@ uri
               that ongoing state. The allowable URIs and URI patterns MAY be restricted by the AS
               based on the RC's presented key information. The callback URI
               SHOULD be presented to the RO during the interaction phase
-              before redirect.
+              before redirect. [[ Editor's note: should we enforce the
+              callback URI to be unique per request? That helps with some fixation
+              attacks, but not with others, and it would be problematic for an
+              AS that wants to lock down each client instance to a single callback
+              instead of a family/pattern of callbacks. ]]
 
 nonce
 : REQUIRED. Unique value to be used in the
@@ -1723,7 +1732,7 @@ hash_method
 }
 ~~~
 
-If this interaction capability is supported for this RC and
+If this interaction mode is supported for this RC and
 request, the AS returns a nonce for use in validating 
 [the callback response](#response-interact-callback).
 Requests to the callback URI MUST be processed as described in 
@@ -1731,12 +1740,47 @@ Requests to the callback URI MUST be processed as described in
 presentation of an interaction callback reference as described in
 {{continue-after-interaction}}.
 
+[[ Editor's note: There has been some call for a post-interaction redirect
+that is not tied to the underlying security model -- specifically, sending the
+user over to a client-hosted page with client-specific instructions on how
+to continue. This would be something hosted externally to the client instance,
+so the client instance would never see this incoming call. We could accomplish
+that using this "callback" post-redirect mechanism but with "method": "static" or 
+"nonce": false or some other signal to indicate that the client won't see the
+incoming request. ]]
+
 [[ Editor's note: The callback information could alternatively be combined
-with other methods like "redirect", but this would require each method to
-define its own set of rules about how callbacks can be used. Combining would
-also allow a client to declare that it expects a callback in response to
+with other methods like "redirect", essentially putting everything in the "callback"
+object into the field for the other objects. However, this would require each method to
+define its own set of rules about how callbacks can be used, and we would want them
+all to be consistent with each other with clear information about how the AS is
+supposed to respond to all of these. 
+
+~~~
+"interact" {
+    "redirect": {
+       "method": "redirect",
+       "uri": "https://client.example.net/return/123455",
+       "nonce": "LKLTI25DK82FX4T4QFZC"
+    }
+}
+~~~
+
+So if the object is there, you do the redirect on completion, if the object
+isn't there (it's a boolean, like today), you don't redirect when you're done.
+Previous versions of this specification used this structure, but it was abandoned
+in favor of the current setup to allow for different combinations of user interaction
+methods at the same time while still keeping a consistent security model. OAuth 2's
+"grant_type" model has proved to be limiting in unanticipated ways since it requires an
+entirely new grant type to be invented any time there is a new combination of aspects, or
+it requires each grant type to have many of the same optionalities.
+Combining these fields back into one, in this way, would
+allow a client to declare that it expects a callback in response to
 one kind of interaction method but not others, and include multiple combinations
-at once. This could be accomplished by allowing the client to "bundle" interaction
+at once. For example, if a client wants to allow a user to redirect to the AS
+and back on the same device, or to use a usercode on a secondary device without a 
+callback, and the client wants to offer both modes simultaneously.
+This could alternately be accomplished by allowing the client to "bundle" interaction
 parameters together, if desirable -- for example, if "interact" were an array, the 
 client would accept any combination represented by one object. This example binds
 the "callback" only to the first "redirect" method, and second (short) "redirect"
@@ -1762,6 +1806,8 @@ and  "user_code" method do not use a callback.
 It's not clear what a response to such an array would be. Would the AS
 pick one of these bundles? Would it be allowed to respond to any or all of them? 
 Could an AS use different URIs for each bundle? (This seems likely, at least.)
+Would there be a security problem if the AS used the same URI for both bundles, since
+one requires a front channel redirect and the other does not?
 
 ]]
 
@@ -1812,6 +1858,16 @@ Since the incoming request to the callback URL is from the AS and
 not from the RO's browser, the RC MUST NOT require the RQ to
 be present on incoming HTTP the request.
 
+[[ Editor's note: This post-interaction method can be used in
+advanced use cases like asynchronous authorization, or simply to
+signal the client that it should move to the next part of the
+protocol, even when there is no user present at the client. 
+As such it can feel a little odd being inside the "interact" block
+of the protocol, but it does align with the redirect-based "callback"
+method and it seems they really should be mutually-exclusive.
+Additionally, should there be a method for simply pushing the updated
+response directly to the client, instead? ]]
+
 ### Display a Short User Code {#request-interact-usercode}
 
 If the RC is capable of displaying or otherwise communicating
@@ -1826,7 +1882,7 @@ runtime, as described in {{response-interact-usercode}}.
 }
 ~~~
 
-If this interaction capability is supported for this RC and
+If this interaction mode is supported for this RC and
 request, the AS returns a user code and interaction URL as specified
 in {{interaction-usercode}}.
 
@@ -1846,12 +1902,12 @@ If possible, the AS SHOULD use one of the locales in the array, with
 preference to the first item in the array supported by the AS. If none
 of the given locales are supported, the AS MAY use a default locale.
 
-### Extending Interaction Capabilities {#request-interact-extend}
+### Extending Interaction Modes {#request-interact-extend}
 
-Additional interaction capabilities are defined in [a registry TBD](#IANA).
+Additional interaction modes are defined in [a registry TBD](#IANA).
 
 [[ Editor's note: we should have guidance in here about how to
-define other interaction capabilities. There's already interest in
+define other interaction modes. There's already interest in
 defining message-based protocols like DIDCOMM and challenge-response 
 protocols like FIDO, for example. ]]
 
@@ -1885,7 +1941,8 @@ MUST NOT alter the existing grant associated with the reference.
 [[ Editor's note: this basic capability is to allow for both
 step-up authorization and downscoped authorization, but by explicitly
 creating a new request and not modifying an existing one. What's the
-best guidance for how an AS should process this? ]]
+best guidance for how an AS should process this? What are the use cases
+that help differentiate this from modification of an existing request? ]]
 
 ## Requesting OpenID Connect Claims {#request-oidc-claims}
 
@@ -2080,10 +2137,15 @@ the continuation URL can be static, and potentially even the
 same as the initial request URL. If the AS does not use an access
 token here, it needs to use unique URLs in its response and bind the
 client's key to requests to those URLs -- or potentially only allow
-one request per client at a time? The optionality adds a layer 
+one request per client at a time. The optionality adds a layer 
 of complexity, but the client behavior is deterministic in all
 possible cases and it re-uses existing functions and structures
-instead of inventing something special just to talk to the AS. ]]
+instead of inventing something special just to talk to the AS. 
+The optional access token represents a design compromise, but the
+working group can decide to either require the access token on
+all requests or to remove the access token functionality and
+require the security of the continuation requests be based on
+unique URLs. ]]
 
 ## Access Tokens {#response-token}
 
@@ -2248,22 +2310,40 @@ management is allowed, each access token SHOULD have different management URIs.
 if we require the token to be presented? ]]
 
 
-## Interaction Capabilities {#response-interact}
+## Interaction Modes {#response-interact}
 
-If the RC has indicated a [capability to interact with the RO in its request](#request-interact), and the AS has determined that interaction is both
+If the RC has indicated a [capability to interact with the RO in its request](#request-interact),
+and the AS has determined that interaction is both
 supported and necessary, the AS responds to the RC with any of the
 following values in the `interact` field of the response. There is 
-no preference order for interaction capabilities in the response, 
+no preference order for interaction modes in the response, 
 and it is up to the RC to determine which ones to use. All supported
 interaction methods are included in the same `interact` object.
 
-The AS MUST NOT respond with any interaction capability that the
+redirect
+: Redirect to an arbitrary URL. {{response-interact-redirect}}
+
+app
+: Launch of an application URL. {{response-interact-app}}
+
+callback
+: Callback to an RC URL after interaction is completed. {{response-interact-callback}}
+
+user_code
+: Display a short user code. {{response-interact-usercode}}
+
+Additional interaction mode responses can be defined in [a registry TBD](#IANA).
+
+The AS MUST NOT respond with any interaction mode that the
 RC did not indicate in its request. The AS MUST NOT respond with
-any interaction capability that the AS does not support.
+any interaction mode that the AS does not support. Since interaction
+responses include secret or unique information, the AS SHOULD
+respond to each interaction mode only once in an ongoing request,
+particularly if the RC [modifies its request](#continue-modify).
 
 ### Redirection to an arbitrary URL {#response-interact-redirect}
 
-If the RC indicates that it can [redirect to an arbitrary URL](#request-interact-redirect) and the AS supports this capability for the RC's
+If the RC indicates that it can [redirect to an arbitrary URL](#request-interact-redirect) and the AS supports this mode for the RC's
 request, the AS responds with the "redirect" field, which is
 a string containing the URL to direct the RQ to. This URL MUST be
 unique for the request and MUST NOT contain any security-sensitive
@@ -2294,7 +2374,7 @@ interactive console.
 ### Launch of an application URL {#response-interact-app}
 
 If the RC indicates that it can [launch an application URL](#request-interact-app) and
-the AS supports this capability for the RC's request, the AS
+the AS supports this mode for the RC's request, the AS
 responds with the "app" field, which is a string containing the URL
 to direct the RQ to. This URL MUST be unique for the request and
 MUST NOT contain any security-sensitive information.
@@ -2319,9 +2399,9 @@ object to account for other parameters needed in app2app use cases,
 like addresses for distributed storage systems, server keys, and the
 like. Details TBD as people build this out. ]]
 
-### Callback to URL {#response-interact-callback}
+### Post-interaction Callback to an RC URL {#response-interact-callback}
 
-If the RC indicates that it can [receive a post-interaction callback on a URL](#request-interact-callback) and the AS supports this capability for the
+If the RC indicates that it can [receive a post-interaction callback on a URL](#request-interact-callback) and the AS supports this mode for the
 RC's request, the AS responds with a "callback" field containing a nonce
 that the RC will use in validating the callback as defined in
 {{interaction-callback}}.
@@ -2347,7 +2427,7 @@ interaction reference on the callback URI.
 
 If the RC indicates that it can 
 [display a short user-typeable code](#request-interact-usercode)
-and the AS supports this capability for the RC's
+and the AS supports this mode for the RC's
 request, the AS responds with a "user_code" field. This field is an
 object that contains the following members.
 
@@ -2388,15 +2468,15 @@ entered, it SHOULD display an error to the user.
 The RC SHOULD also communicate the URL if possible
 to facilitate user interaction, but since the URL should be stable,
 the RC should be able to safely decide to not display this value.
-As this interaction capability is designed to facilitate interaction
+As this interaction mode is designed to facilitate interaction
 via a secondary device, it is not expected that the RC redirect
 the RQ to the URL given here at runtime. Consequently, the URL needs to 
 be stable enough that a RC could be statically configured with it, perhaps
 referring the RQ to the URL via documentation instead of through an
 interactive means. If the RC is capable of communicating an
 arbitrary URL to the RQ, such as through a scannable code, the
-RC can use the ["redirect"](#request-interact-redirect) capability
-for this purpose instead of or in addition to the user code capability.
+RC can use the ["redirect"](#request-interact-redirect) mode
+for this purpose instead of or in addition to the user code mode.
 
 The interaction URL returned represents a function of the AS but MAY be completely
 distinct from the URL the RC uses to [request access](#request), allowing an
@@ -2407,10 +2487,10 @@ functionality.
 two separate roles. Namely, a delegation server (back end) and interaction
 server (user-facing).]]
 
-### Extending Interaction Capability Responses {#response-interact-extend}
+### Extending Interaction Mode Responses {#response-interact-extend}
 
 Extensions to this specification can define new interaction
-capability responses in [a registry TBD](#IANA). Extensions MUST
+mode responses in [a registry TBD](#IANA). Extensions MUST
 document the corresponding interaction request.
 
 
@@ -2646,9 +2726,9 @@ this? ]]
 
 If the RC [indicates that it is capable of driving interaction with the RO in its request](#request-interact), and
 the AS determines that interaction is required and responds to one or
-more of the RC's interaction capabilities, the RC SHOULD
+more of the RC's interaction modes, the RC SHOULD
 initiate one of the returned 
-[interaction capabilities in the response](#response-interact).
+[interaction modes in the response](#response-interact).
 
 When the RO is interacting with the AS, the AS MAY perform whatever
 actions it sees fit, including but not limited to:
@@ -2672,7 +2752,7 @@ the UX, I think. ]]
 ## Interaction at a Redirected URI {#interaction-redirect}
 
 When the RO is directed to the AS through the ["redirect"](#response-interact-redirect)
-capability, the AS can interact with the RO through their web
+mode, the AS can interact with the RO through their web
 browser to authenticate the user as an RO and gather their consent.
 Note that since the RC does not add any parameters to the URL, the
 AS MUST determine the grant request being referenced from the URL
@@ -2690,7 +2770,7 @@ the RC has to communicate the redirection URI to the RQ.
 
 ## Interaction at the User Code URI {#interaction-usercode}
 
-When the RO is directed to the AS through the ["user_code"](#response-interact-usercode) capability, the
+When the RO is directed to the AS through the ["user_code"](#response-interact-usercode) mode, the
 AS can interact with the RO through their web browser to collect the
 user code, authenticate the user as an RO, and gather their consent.
 Note that since the URL itself is static, the AS MUST determine the
@@ -2713,7 +2793,7 @@ happens asynchronously.
 ## Interaction through an Application URI {#interaction-app}
 
 When the RC successfully launches an application through the
-["app" capability](#response-interact-app), the AS
+["app" mode](#response-interact-app), the AS
 interacts with the RO through that application to authenticate the
 user as the RO and gather their consent. The details of this
 interaction are out of scope for this specification.
@@ -2724,14 +2804,15 @@ request? ]]
 
 ## Post-Interaction Completion {#interaction-finalize}
 
-Upon completing an interaction with the RO, if a ["callback"](#response-interact-callback) capability is
+Upon completing an interaction with the RO, if a ["callback"](#response-interact-callback) mode is
 available with the current request, the AS MUST follow the appropriate
 method at the end of interaction to allow the RC to continue. If
-this capability is not available, the AS SHOULD instruct the RO to
+this mode is not available, the AS SHOULD instruct the RO to
 return to their RC software upon completion. Note that these steps
 still take place in most error cases, such as when the RO has denied
 access. This pattern allows the RC to potentially recover from the error
-state without restarting the request from scratch. 
+state without restarting the request from scratch by modifying its
+request or providing additional information directly to the AS.
 
 [[ Editor's note: there might be some other kind of push-based
 notification or callback that the client can use, or an out-of-band
@@ -2741,11 +2822,9 @@ restrictive in the next steps that it can take. Still, it's important
 that the AS not expect or even allow clients to poll if the client has
 stated it can take a callback of some form, otherwise that sets up a
 potential session fixation attack vector that the client is trying to
-and able to avoid. ]]
-
-The AS MUST calculate a hash value as described in 
-{{interaction-hash}}. The RC will use this value to
-validate the return call from the AS.
+and able to avoid. There has also been a call for post-interaction 
+that doesn't tie into the security of the protocol, like redirecting to
+a static webpage hosted by the client's company. Would this fit here? ]]
 
 The AS MUST create an interaction reference and associate that
 reference with the current interaction and the underlying pending
@@ -2753,13 +2832,18 @@ request. This value MUST be sufficiently random so as not to be
 guessable by an attacker. The interaction reference MUST be
 one-time-use.
 
+The AS MUST calculate a hash value based on the RC and AS nonces and the
+interaction reference, as described in 
+{{interaction-hash}}. The RC will use this value to
+validate the return call from the AS.
+
 The AS then MUST send the hash and interaction reference based on
-the interaction finalization capability as described in the following
+the interaction finalization mode as described in the following
 sections.
 
 ### Completing Interaction with a Browser Redirect to the Callback URI {#interaction-callback}
 
-When using the ["callback" interaction capability](#response-interact-callback) with the `redirect` method,
+When using the ["callback" interaction mode](#response-interact-callback) with the `redirect` method,
 the AS signals to the RC that interaction is
 complete and the request can be continued by directing the RO (in
 their browser) back to the RC's callback URL sent in [the callback request](#request-interact-callback-redirect).
@@ -2800,7 +2884,7 @@ reference value received here.
 ### Completing Interaction with a Direct HTTP Request Callback {#interaction-pushback}
 
 When using the 
-["callback" interaction capability](#response-interact-callback) with the `push` method,
+["callback" interaction mode](#response-interact-callback) with the `push` method,
 the AS signals to the RC that interaction is
 complete and the request can be continued by sending an HTTP POST
 request to the RC's callback URL sent in [the callback request](#request-interact-callback-push).
@@ -2842,8 +2926,14 @@ reference value received here.
 
 The "hash" parameter in the request to the RC's callback URL ties
 the front channel response to an ongoing request by using values
-known only to the parties involved. This security mechanism prevents several kinds of
-session fixation attacks against the RC.
+known only to the parties involved. This security mechanism allows the RC to protect itself against
+several kinds of session fixation and injection attacks. The AS MUST
+always provide this hash, and the RC MUST validate the hash when received.
+
+[[ Editor's note: If the client uses a unique callback URL per request, that prevents some of
+the same attacks, but without the same cryptographic binding between the interaction and delegation
+channels. A unique URI would allow the client to differentiate inputs, but it would not 
+prevent an attacker from injecting an unrelated interaction reference into this channel. ]]
 
 To calculate the "hash" value, the party doing the calculation
 first takes the "nonce" value sent by the RC in the 
@@ -3093,7 +3183,10 @@ object? I think that at least the URI is required, access token required IF used
 even if they haven't changed since last time, and the client will use whatever value comes back. ]]
 
 [[ Editor's note: extensions to this might need to communicate to the client what the current
-state of the user interaction is. ]]
+state of the user interaction is. This has been done in similar proprietary protocols, but the
+details of that information tend to be highly application specific. Like "user hasn't logged in yet",
+"user has logged in but is still sitting at the page", or "user seems to have wandered off". We might
+be able to provide a decent framework for hanging this kind of stuff on. ]]
 
 If the request is successful in causing the AS to issue access tokens and
 release subject claims, the response could look like this example:
@@ -3138,7 +3231,11 @@ replaces any values from a previous request. The AS MAY respond to any of the in
 responses as described in {{response-interact}}, just like it would to a new request.
 
 The RC MAY include the `user` field as described in {{request-user}} to present new assertions
-or information about the RQ.
+or information about the RQ. [[ Editor's note: This would allow the client to do things like
+gather the user's identifiers post-request, or gather an assertion from an on-device element
+that the AS can verify. It opens up potential avenues for trouble if the user here is
+different from the RO that's already showed up at the AS or race conditions if the RQ's identity changes 
+mid-stream. But that said, this seems important for multi-log-in cases and the like, probably. ]]
 
 The RC MUST NOT include the `client` section of the request. [[ Editor's note: We do not want
 the client to be able to get swapped out from underneath the user, especially post-consent. 
@@ -3148,8 +3245,8 @@ And it feels like it might have consequences outside of the request, such as rot
 key for all ongoing grants for a given client instance, which isn't really desirable here. 
 We need a lot more discussion and engineering on this before including it. ]]
 
-The RC MAY include interaction responses such as described in {{continue-after-interaction}}.
-[[ Editor's note: it seems a little odd to include this but I can't see a reason to
+The RC MAY include post-interaction responses such as described in {{continue-after-interaction}}.
+[[ Editor's note: it seems a little odd to include this in a request but I can't see a reason to
 not allow it. ]]
 
 Modification requests MUST NOT alter previously-issued access tokens. Instead, any access
@@ -3354,7 +3451,7 @@ Detached-JWS: ejy0...
 
 The response MAY include any fields described {{response}} that are applicable to this
 ongoing request, including the most recently issued access tokens, any released subject
-claims, and any currently active interaction capabilities. The response MAY contain a 
+claims, and any currently active interaction modes. The response MAY contain a 
 new ["continue" response](#response-continue) as described above.
 
 [[ Editor's note: I'm a little dubious about the need for this particular function in
@@ -3362,7 +3459,11 @@ reality, but including it for completeness sake. There are a lot of questions we
 to answer, such as whether it's safe to include access tokens and claims in the response
 of this kind of "read" at all, and whether it makes sense to include items like interaction
 nonces in the response. This discussion should be driven by the use cases calling for
-this "read" functionality. ]]
+this "read" functionality. There have been similar functions within proprietary protocols
+where the client calls an endpoint at the AS to figure out where the user is in the 
+interaction process at the AS, letting the client provide a smarter UI. It doesn't seem
+like we could do that in depth here since it would be highly application specific, but that
+might be a good example of how to extend a response and give a client extra information. ]]
 
 ## Canceling a Grant Request {#continue-delete}
 
@@ -3619,12 +3720,15 @@ When used in the GNAP delegation protocol, these key binding mechanisms allow
 the AS to ensure that the keys presented by the RC in the initial request are in 
 control of the party calling any follow-up or continuation requests. To facilitate 
 this requirement, all keys in the initial request {{request-key}} MUST be proved in all continuation requests
-{{continue-request}} and token management requests {{token-management}}. The AS MUST validate all keys
+{{continue-request}} and token management requests {{token-management}}, modulo any 
+rotations on those keys over time that the AS knows about. The AS MUST validate all keys
 [presented by the RC](#request-key) or referenced in an
 ongoing request for each call within that request.
 
 [[ Editor's note: We are going to need a way for a client to rotate its keys
 securely, even while an ongoing grant is in effect. ]]
+
+When used to bind to an access token, the 
 
 ## Detached JWS {#detached-jws}
 
@@ -3634,7 +3738,8 @@ This method is indicated by `jwsd` in the
 The header of the JWS MUST contain the
 `kid` field of the key bound to this RC for this request. The JWS header
 MUST contain an `alg` field appropriate for the key identified by kid
-and MUST NOT be `none`.
+and MUST NOT be `none`.  The `b64` field MUST be set to `false` and the
+`crit` field MUST contain at least `b64` as specified in {{RFC7797}}
 
 To protect the request, the JWS header MUST contain the following
 additional fields.
@@ -3648,6 +3753,13 @@ htu
 ts
 : A timestamp of the request in integer seconds
 
+at_hash
+: When to bind a request to an access token, the access token hash value. Its value is the 
+    base64url encoding of the left-most half of the hash of the octets of the ASCII representation of the 
+    `access_token` value, where the hash algorithm used is the hash algorithm used in the `alg` 
+    header parameter of the JWS's JOSE Header. For instance, if the `alg` is `RS256`, hash the `access_token` 
+    value with SHA-256, then take the left-most 128 bits and base64url encode them. 
+
 [[ Editor's note: It's not the usual practice to put additional information
 into the header of a JWS, but this keeps us from having to normalize the body
 serialization. Alternatively, we could add all these fields to the body
@@ -3659,7 +3771,7 @@ the object is signed according to detached JWS {{RFC7797}}.
 
 The RC presents the signature in the Detached-JWS HTTP Header
 field. [[ Editor's Note: this is a custom header field, do we need
-this? ]]
+this? It seems like the best place to put this. ]]
 
 ~~~
 POST /tx HTTP/1.1
@@ -3709,7 +3821,9 @@ kpdfWdiPQddQ6Y1cK2U3obvUg7w"
 }
 ~~~
 
-
+If the request being made does not have a message body, such as
+an HTTP GET, OPTIONS, or DELETE method, the JWS signature is
+calculated over an empty payload.
 
 When the server (AS or RS) receives the Detached-JWS header, it MUST parse its
 contents as a detached JWS object. The HTTP Body is used as the
@@ -3717,14 +3831,18 @@ payload for purposes of validating the JWS, with no
 transformations.
 
 [[ Editor's note: this is a potentially fragile signature mechanism.
-It doesn't protect the method or URL of the request in the signature,
+It doesn't protect arbitrary headers or other specific aspects of the request,
 but it's simple to calculate and useful for body-driven requests, like
-the client to the AS. We might want to remove this in favor of
-general-purpose HTTP signing. ]]
+the client to the AS. Additionally it is potentially
+fragile since a multi-tier system could parse the
+payload and pass the parsed payload downstream with potential
+transformations, making downstream signature validation impossible.
+We might want to remove this in favor of
+general-purpose HTTP signing, or at least provide guidance on its use. ]]
 
 ## Attached JWS {#attached-jws}
 
-This method is indicated by `jwsd` in the
+This method is indicated by `jws` in the
 `proof` field. A JWS {{RFC7515}} signature object is created as follows:
 
 The header of the JWS MUST contain the
@@ -3743,6 +3861,13 @@ htu
 
 ts
 : A timestamp of the request in integer seconds
+
+at_hash
+: When to bind a request to an access token, the access token hash value. Its value is the 
+    base64url encoding of the left-most half of the hash of the octets of the ASCII representation of the 
+    `access_token` value, where the hash algorithm used is the hash algorithm used in the `alg` 
+    header parameter of the JWS's JOSE Header. For instance, if the `alg` is `RS256`, hash the `access_token` 
+    value with SHA-256, then take the left-most 128 bits and base64url encode them. 
 
 [[ Editor's note: It's not the usual practice to put additional information
 into the header of a JWS, but this keeps us from having to modify the body
@@ -3792,18 +3917,21 @@ ntQ5c7a1-gxtnXzuIKa34OekrnyqE1hmVWpeQ
 
 ~~~
 
-
+If the request being made does not have a message body, such as
+an HTTP GET, OPTIONS, or DELETE method, the JWS signature is
+calculated over an empty payload and passed in the `Detached-JWS`
+header as described in {{detached-jws}}.
 
 [[ Editor's note: A downside to this method is that it requires the
 content type to be something other than application/json, and it
 doesn't work against an RS without additional profiling since it
-requires things to be sent in the body -- you'd need to specify
+takes over the request body -- plus we have to specify
 different delivery locations for a GET vs. a POST, for example.
 Additionally it is potentially
 fragile like a detached JWS since a multi-tier system could parse the
 payload and pass the parsed payload downstream with potential
 transformations. We might want to remove this in favor of
-general-purpose HTTP signing. ]]
+general-purpose HTTP signing, or at least provide guidance on its use. ]]
 
 
 ## Mutual TLS {#mtls}
@@ -3890,7 +4018,10 @@ fHI6kqm3NCyCCTihe2ck5RmCc5l2KBO/vAHF0ihhFOOOby1v6qbPHQcxAU6rEb907
 ~~~
 
 
-[[ Editor's note: ]]
+[[ Editor's note: This method requires no changes to the HTTP message
+itself, since the security relies on the TLS layer. However, the application
+level will need to validate that the certificate key used in the request
+is the one expected for the specific request. ]]
 
 ## Demonstration of Proof-of-Possession (DPoP) {#dpop-binding}
 
@@ -4046,7 +4177,9 @@ following additional requirements:
             [[ Editor's note: this is in contradiction to the referenced
             spec which makes this field mandatory. ]]
 
-- The b (body hash) field MUST be calculated and supplied
+- The b (body hash) field MUST be calculated and supplied,
+    unless there is no entity body (such as a GET, OPTIONS, or
+    DELETE request).
 
 - All components of the URL MUST be calculated and supplied
 
@@ -4508,6 +4641,11 @@ sure that it has the permission to do so.
 --- back
    
 # Document History {#history}
+
+- -14
+    - Editorial clarification from design team meetings.
+    - Added "at_hash" to both JWS methods for use with an access token.
+    - Allow attached-JWS method to defer to detached-JWS method for presentation on a non-body request.
 
 - -13
     - Clarified that "subject" request and response aren't for identity claims, just identifiers.
@@ -5274,3 +5412,8 @@ can provide a set of common access scopes as simple strings but still allow
 RC developers to specify custom access when needed for more complex APIs.
 
 Extensions to this specification can use different data types for defined fields, but
+each extension needs to not only declare what the data type means, but also provide
+justification for the data type representing the same basic kind of thing it extends.
+For example, an extension declaring an "array" representation for a field would need
+to explain how the array represents something akin to the non-array element that it
+is replacing. 
