@@ -1,5 +1,5 @@
 ---
-title: 'Grant Negotiation Access Protocol'
+title: 'Grant Negotiation and Authorization Protocol'
 docname: draft-richer-transactional-authz-latest
 category: std
 
@@ -184,7 +184,15 @@ role of the AS as defined by the protocol.
 discussion within the working group, as is the appropriate precision
 of what activities and expectations a particular role covers. In particular,
 the AS might be formally decomposed into delegation components, that the
-client talks to, and interaction components, that the user talks to. ]]
+client talks to, and interaction components, that the user talks to. Several
+alternative names have been proposed for different roles and components, 
+including:
+
+- Grant Server (for Authorization Server)
+- Grant Client (for Resource Client)
+- Operator (for Requesting Party)
+
+]]
 
 ## Elements {#elements}
 
@@ -197,14 +205,23 @@ delegated to the RC. The access token is created by the AS, consumed
 and verified by the RS, and issued to and carried by the RC. The contents
 and format of the access token are opaque to the RC.
 
+Grant
+: The process by which a the RC requests and is given delegated
+access to the RS by the AS through the authority of the RO.
+
 Key
 : A cryptographic element binding a request to the
 holder of the key. Access tokens and RC instances can be associated with
 specific keys.
 
+Resource
+: A protected API served by the RS and accessed by the RC. Access to this
+resource is delegated by the RO as part of the grant process.
+
 Subject Information
-: Information that is returned directly to the RC from the AS
-without the RC making a separate call to an RS.
+: Information about the RO that is returned directly to the RC from the AS
+without the RC making a separate call to an RS. Access to this information
+is delegated by the RO as part of the grant process.
 
 [[ Editor's note: What other core elements need an introduction 
 here? These aren't roles to be taken on by different parties, nor
@@ -221,7 +238,11 @@ and not every step in this overview will happen in all circumstances.
 Note that a connection between roles in this process does not necessarily
 indicate that a specific protocol message is sent across the wire
 between the components fulfilling the roles in question, or that a 
-particular step is required every time. In some circumstances,
+particular step is required every time. For example, for an RC interested
+in only getting subject information directly, and not calling an RS,
+all steps involving the RS below do not apply. 
+
+In some circumstances,
 the information needed at a given stage is communicated out-of-band
 or is pre-configured between the components or entities performing
 the roles. For example, one entity can fulfil multiple roles, and so
@@ -229,17 +250,17 @@ explicit communication between the roles is not necessary within the
 protocol flow.
 
 ~~~
-        +------------+                           +------------+
-        | Requesting | ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ ~ |  Resource  |
-        | Party (RQ) |                           | Owner (RO) |
-        +------------+                           +------------+
-            +                                   +      
-            +                                  +      
-           (A)                                (B)       
-            +                                +        
-            +                               +         
-        +--------+                         +     +------------+
-        |Resource|--------------(1)-------+----->|  Resource  |
+        +------------+             +------------+
+        | Requesting | ~ ~ ~ ~ ~ ~ |  Resource  |
+        | Party (RQ) |             | Owner (RO) |
+        +------------+             +------------+
+            +                            +      
+            +                            +      
+           (A)                          (B)       
+            +                            +        
+            +                            +         
+        +--------+                       +       +------------+
+        |Resource|--------------(1)------+------>|  Resource  |
         | Client |                       +       |   Server   |
         |  (RC)  |       +---------------+       |    (RS)    |
         |        |--(2)->| Authorization |       |            |
@@ -248,7 +269,7 @@ protocol flow.
         |        |--(4)->|               |       |            |
         |        |<-(5)--|               |       |            |
         |        |--------------(6)------------->|            |
-        |        |       |               |<-(7)--|            |
+        |        |       |               |<~(7)~~|            |
         |        |<-------------(8)------------->|            |
         |        |--(9)->|               |       |            |
         |        |<-(10)-|               |       |            |
@@ -261,7 +282,7 @@ protocol flow.
     Legend
     + + + indicates a possible interaction with a human
     ----- indicates an interaction between protocol roles
-    ~ ~ ~ indicates a potential equivalence or communication between roles
+    ~ ~ ~ indicates a potential equivalence or out-of-band communication between roles
 ~~~
 
 - (A) The RQ interacts with the RC to indicate a need for resources on
@@ -272,7 +293,9 @@ protocol flow.
     
 - (1) The RC [attempts to call the RS](#rs-request-without-token) to determine 
     what access is needed.
-    The RS informs the RC that access can be granted through the AS.
+    The RS informs the RC that access can be granted through the AS. Note that
+    for most situations, the RC already knows which AS to talk to and which
+    kinds of access it needs.
 
 - (2) The RC [requests access at the AS](#request).
 
@@ -297,7 +320,10 @@ protocol flow.
 - (6) The RC [uses the access token](#use-access-token) to call the RS.
 
 - (7) The RS determines if the token is sufficient for the request by
-    examining the token, potentially [calling the AS](#introspection).
+    examining the token, potentially [calling the AS](#introspection). Note that
+    the RS could also examine the token directly, call an internal data store,
+    execute a policy engine request, or any number of alternative methods for
+    validating the token and its fitness for the request.
     
 - (8) The RC to [call the RS](#use-access-token) using the access token
     until the RS or RC determine that the token is no longer valid.
@@ -314,7 +340,7 @@ protocol flow.
     examining the token, potentially [calling the AS](#introspection).
 
 - (13) The RC [disposes of the token](#revoke-access-token) once the RC
-    has completed its access of the RS.
+    has completed its access of the RS and no longer needs the token.
 
 The following sections and {{examples}} contain specific guidance on how to use the 
 GNAP protocol in different situations and deployments.
@@ -427,21 +453,24 @@ the AS.
     |        |                                  |        |         |      |
     |        |+ (3) + + Display User Code + + + + + + + + + + + + >|      |
     |        |                                  |        |         |      |
-    |        |                                  |        |<+ (4) +>|      |
-    |        |                                  |        |  Code   |      |
-    |        |--(8)--- Continue Request (A) --->|        |         |      |
-    |        |                                  |        |<+ (5) +>|      |
-    |        |<-(9)-- Not Yet Granted (Wait) ---|        |  AuthN  |      |
+    |        |                                  |        |<+ (4) + |      |
+    |        |                                  |        |Open URI |      |
     |        |                                  |        |         |      |
+    |        |                                  |        |<+ (5) +>|      |
+    |        |                                  |        |  AuthN  |      |
+    |        |--(9)--- Continue Request (A) --->|        |         |      |
     |        |                                  |        |<+ (6) +>|      |
-    |        |                                  |        |  AuthZ  |      |
+    |        |<-(10)- Not Yet Granted (Wait) ---|        |  Code   |      |
     |        |                                  |        |         |      |
     |        |                                  |        |<+ (7) +>|      |
+    |        |                                  |        |  AuthZ  |      |
+    |        |                                  |        |         |      |
+    |        |                                  |        |<+ (8) +>|      |
     |        |                                  |        |Completed|      |
     |        |                                  |        |         |      |
-    |        |--(10)-- Continue Request (B) --->|        |         +------+
+    |        |--(11)-- Continue Request (B) --->|        |         +------+
     |        |                                  |        |
-    |        |<-(11)----- Grant Access ---------|        |
+    |        |<-(12)----- Grant Access ---------|        |
     |        |                                  |        |
     +--------+                                  +--------+
 ~~~
@@ -465,34 +494,35 @@ the AS.
     the RC software itself. Since it is assumed that the RO will interact
     with the AS through a secondary device, the RC does not provide a mechanism to
     launch the RO's browser at this URL.
-    The user enters the code communicated in (3) to the AS. The AS validates this code
-    against a current request in process.
-
+    
 5. The user authenticates at the AS, taking on the role of the RO.
 
-6. As the RO, the user authorizes the pending request from the RC. 
+6.  The user enters the code communicated in (3) to the AS. The AS validates this code
+    against a current request in process.
 
-7. When the AS is done interacting with the user, the AS 
+7. As the RO, the user authorizes the pending request from the RC. 
+
+8. When the AS is done interacting with the user, the AS 
     indicates to the RO that the request has been completed.
     
-8. Meanwhile, the RC loads the continuation information stored at (3) and 
+9. Meanwhile, the RC loads the continuation information stored at (3) and 
     [continues the request](#continue-request). The AS determines which
     ongoing access request is referenced here and checks its state.
     
-9. If the access request has not yet been authorized by the RO in (6),
+10. If the access request has not yet been authorized by the RO in (6),
     the AS responds to the RC to [continue the request](#response-continue)
-    at a future time through additional polling. This response can include
-    refreshed credentials as well as information regarding how long the
+    at a future time through additional polled continuation requests. This response can include
+    updated continuation information as well as information regarding how long the
     RC should wait before calling again. The RC replaces its stored
     continuation information from the previous response (2).
     Note that the AS may need to determine that the RO has not approved
     the request in a sufficient amount of time and return an appropriate
     error to the RC.
 
-10. The RC continues to [poll the AS](#continue-poll) with the new
+11. The RC continues to [poll the AS](#continue-poll) with the new
     continuation information in (9).
     
-11. If the request has been authorized, the AS grants access to the information
+12. If the request has been authorized, the AS grants access to the information
     in the form of [access tokens](#response-token) and
     [direct subject information](#response-subject) to the RC.
 
@@ -795,7 +825,9 @@ available values for these properties are determined by the API
 being protected at the RS.
 
 [[ Editor's note: this will align with OAuth 2 RAR, but the details
-of how it aligns are TBD ]].
+of exactly how it aligns are TBD. Since RAR needs to work in the confines
+of OAuth 2, RAR has to define how to interact with "scope", "resource",
+and other existing OAuth 2 mechanisms that don't exist in GNAP. ]].
 
 actions
 : The types of actions the RC will take at the RS as an array of strings.
@@ -934,7 +966,7 @@ they're the ones picking from the API's description. ]]
 When requesting multiple access tokens, the resources field is
 a JSON object. The names of the JSON object fields are token
 identifiers chosen by the RC, and MAY be any valid string. The
-values of the JSON object are JSON arrays representing a single
+values of the JSON object fields are JSON arrays representing a single
 access token request, as specified in 
 [requesting a single access token](#request-resource-single).
 
@@ -1011,13 +1043,18 @@ split_token
     [multiple token request](#request-resource-multiple). The labels of the
     returned additional tokens are chosen by the AS. The client MUST be able
     to tell from the token response where and how it can use the each
-    access tokens.
+    access tokens. [[ Editor's note: This functionality is controversial at
+    best as it requires significantly more complexity on the client in order
+    to solve one class of AS/RS deployment choices. ]]
 
 bind_token
 : The RC wants the issued access token to be bound to the [key the RC used](#request-key)
     to make the request. The resulting access token MUST be bound using the same
     `proof` mechanism used by the client with a `key` value of `true`, indicating
     the client's presented key is to be used for binding.
+    [[ Editor's note: should there be a different flag and mechanism for the client
+    to explicitly indicate which binding method it wants to use, especially if
+    the client wants to use a different method at the AS than the RS? ]]
 
 The AS MUST respond with any applied flags in the [token response](#response-token)
 `resources` section.
@@ -1152,7 +1189,10 @@ authentication event information. ]]
 
 When sending a non-continuation request to the AS, the RC MUST identify
 itself by including the `client` field of the request and by signing the
-request as described in {{binding-keys}}. 
+request as described in {{binding-keys}}. Note that for a 
+[continuation request](#continue-request), the RC instance is identified by its
+association with the request being continued and so this field is
+not sent under those circumstances.
 
 When RC information is sent
 by value, the `client` field of the request consists of a JSON
@@ -1198,8 +1238,8 @@ Additional fields are defined in [a registry TBD](#IANA).
 
 The RC MUST prove possession of any presented key by the `proof` mechanism
 associated with the key in the request.  Proof types
-are defined in [a registry TBD](#IANA) and an initial set are of methods
-are described in {{binding-keys}}. 
+are defined in [a registry TBD](#IANA) and an initial set of methods
+is described in {{binding-keys}}. 
 
 Note that the AS MAY know the RC's public key ahead of time, and
 the AS MAY apply different policies to the request depending on what
@@ -1244,7 +1284,7 @@ identifier as a direct reference value in lieu of the object.
 
 When the AS receives a request with an instance identifier, the AS MUST
 ensure that the key used to [sign the request](#binding-keys) is 
-appropriate for the instance identifier.
+associated with the instance identifier.
 
 If the `instance_id` field is sent, it MUST NOT be accompanied by other fields unless such 
 fields are explicitly marked safe for inclusion alongside the instance
@@ -1326,7 +1366,7 @@ formats using a single proofing mechanism.
 ~~~
 
 [Continuation requests](#continue-request)
-MUST use the same key and proof method as the initial request.
+MUST use the same key (or its most recent rotation) and proof method as the initial request.
 
 ### Providing Displayable RC Information {#request-display}
 
@@ -3052,6 +3092,9 @@ next continuation request.
 object? I think that at least the URI is required, access token required IF used, etc. This is
 even if they haven't changed since last time, and the client will use whatever value comes back. ]]
 
+[[ Editor's note: extensions to this might need to communicate to the client what the current
+state of the user interaction is. ]]
+
 If the request is successful in causing the AS to issue access tokens and
 release subject claims, the response could look like this example:
 
@@ -3406,7 +3449,10 @@ the AS or by the RC through the [token management URI](#revoke-access-token).
 If the token is validated and the key is appropriate for the
 request, the AS MUST invalidate the current access token associated
 with this URL, if possible, and return a new access token response as
-described in {{response-token-single}}. The value of the
+described in {{response-token-single}}, unless the `multi_token` flag
+is specified in the request. [[ Editor's note: We could also use different
+verbs to signal whether or not the old token should be kept around
+or not, instead of using a token flag to do this. ]] The value of the
 access token MUST NOT be the same as the current value of the access
 token used to access the management API. The response MAY include an
 updated access token management URL as well, and if so, the RC
