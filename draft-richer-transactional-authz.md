@@ -3321,6 +3321,22 @@ of this kind of "read" at all, and whether it makes sense to include items like 
 nonces in the response. This discussion should be driven by the use cases calling for
 this "read" functionality. ]]
 
+## Canceling a Grant Request {#continue-delete}
+
+If the RC wishes to cancel an ongoing grant request, it makes an
+HTTP DELETE request to the continuation URI. 
+
+~~~
+DELETE /continue HTTP/1.1
+Host: server.example.com
+Content-type: application/json
+Authorization: GNAP 80UPRY5NM33OMUKMKSKU
+Detached-JWS: ejy0...
+~~~
+
+If the request is successfully cancelled, the AS responds with an HTTP 202.
+The AS MUST revoke all associated access tokens, if possible.
+
 # Token Management {#token-management}
 
 If an access token response includes the "manage" parameter as
